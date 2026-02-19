@@ -13,7 +13,7 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // console.log("login", req.body);
+    
 
     // 🔒 normalize email
     const normalizedEmail = email.toLowerCase();
