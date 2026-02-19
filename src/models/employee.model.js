@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const employeeSchema = new mongoose.Schema(
   {
@@ -7,16 +8,15 @@ const employeeSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
+      unique: true, // automatically indexed
       lowercase: true,
       trim: true,
-      index: true,
     },
 
     password: {
       type: String,
-      required: true, // bcrypt hashed
-      select: false, // 🔥 password never auto-fetch
+      required: true,
+      select: false, // never return password by default
     },
 
     role: {
@@ -28,13 +28,12 @@ const employeeSchema = new mongoose.Schema(
 
     /* ================= HR CONTROLLED ================= */
 
-   employeeCode: {
-  type: String,
-  // unique: true,
-  sparse: true,
-  default: null,
-},
-
+    employeeCode: {
+      type: String,
+      unique: true,
+      sparse: true, // unique only when value exists
+      default: null,
+    },
 
     department: {
       type: String,
@@ -53,7 +52,7 @@ const employeeSchema = new mongoose.Schema(
 
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee", // HR/Admin
+      ref: "Employee",
       default: null,
     },
 
@@ -113,7 +112,7 @@ const employeeSchema = new mongoose.Schema(
 
     isActive: {
       type: Boolean,
-      default: false, // 🔥 login blocked until approval
+      default: false, // login blocked until approval
       index: true,
     },
 
@@ -148,12 +147,37 @@ const employeeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
-// ✅ Safe export
+
+// ================= PASSWORD HASHING =================
+
+employeeSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+
+// ================= PASSWORD COMPARE METHOD =================
+
+employeeSchema.methods.comparePassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+
+// ================= SAFE MODEL EXPORT =================
+
+// ================= SAFE MODEL EXPORT =================
+
 const Employee =
   mongoose.models.Employee ||
   mongoose.model("Employee", employeeSchema);
 
 export default Employee;
+
+
+

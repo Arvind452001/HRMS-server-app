@@ -4,8 +4,7 @@ import crypto from "crypto";
 import { sendEmail } from "../utils/sendEmail.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
 import { verifyEmailOtpTemplate } from "../utils/emailTemplates/verifyEmailOtp.js";
-import Employee from "../models/employee.js";
-
+import Employee from "../models/employee.model.js";
 
 ////////------------------LOGIN --------------------//////////
 
@@ -13,58 +12,53 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    
-
-    // 🔒 normalize email
     const normalizedEmail = email.toLowerCase();
 
-    const user = await Employee.findOne({
+    const employeeDoc = await Employee.findOne({
       email: normalizedEmail,
     }).select("+password");
 
-    if (!user) {
+    if (!employeeDoc) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // 🔒 Only HR or Admin can login
-    // if (!["hr", "admin"].includes(user.role)) {
-    //   return res.status(403).json({
-    //     message: "Access denied. HR or Admin only.",
-    //   });
-    // }
-
-    // 🔒 Must be approved & active
-    if (user.status !== "approved" || !user.isActive) {
+    if (
+      employeeDoc.status !== "approved" ||
+      !employeeDoc.isActive
+    ) {
       return res.status(403).json({
         message: "Account not approved or inactive",
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(
+      password,
+      employeeDoc.password
+    );
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(employeeDoc);
+    const refreshToken = generateRefreshToken(employeeDoc);
 
-    // 🍪 Store refresh token in HTTP-only cookie
     res
       .cookie("refreshToken", refreshToken, {
-        httpOnly: true, // JS cannot access
+        httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .status(200)
       .json({
         message: "Login successful",
         user: {
-          id: user._id,
-          email: user.email,
-          role: user.role,
+          id: employeeDoc._id,
+          email: employeeDoc.email,
+          role: employeeDoc.role,
         },
-        accessToken, // frontend memory me store hoga
+        accessToken,
       });
   } catch (error) {
     console.error("LOGIN ERROR 👉", error);
@@ -72,22 +66,33 @@ export const login = async (req, res) => {
   }
 };
 
-/* ================= CHANGE PASSWORD ================= */
+////////------------------CHANGE PASSWORD--------------------//////////
+
 export const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
 
-    const employee = await Employee.findById(req.user.userId).select(
-      "+password",
-    );
+    const employeeDoc = await Employee.findById(
+      req.user.userId
+    ).select("+password");
 
-    const isMatch = await bcrypt.compare(oldPassword, employee.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Old password incorrect" });
+    if (!employeeDoc) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    employee.password = await bcrypt.hash(newPassword, 10);
-    await employee.save();
+    const isMatch = await bcrypt.compare(
+      oldPassword,
+      employeeDoc.password
+    );
+
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ message: "Old password incorrect" });
+    }
+
+    employeeDoc.password = newPassword; // pre-save hook will hash
+    await employeeDoc.save();
 
     res.json({ message: "Password changed successfully" });
   } catch {
@@ -95,21 +100,30 @@ export const changePassword = async (req, res) => {
   }
 };
 
-/* ================= EMAIL OTP ================= */
-export const sendEmailOTP = async (req, res) => {
-  const employee = await Employee.findById(req.user.userId);
+////////------------------SEND EMAIL OTP--------------------//////////
 
-  if (employee.emailVerified) {
-    return res.status(400).json({ message: "Email already verified" });
+export const sendEmailOTP = async (req, res) => {
+  const employeeDoc = await Employee.findById(req.user.userId);
+
+  if (!employeeDoc) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (employeeDoc.emailVerified) {
+    return res
+      .status(400)
+      .json({ message: "Email already verified" });
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000);
-  employee.emailOTP = otp;
-  employee.emailOTPExpiry = Date.now() + 10 * 60 * 1000;
-  await employee.save();
+
+  employeeDoc.emailOTP = otp;
+  employeeDoc.emailOTPExpiry = Date.now() + 10 * 60 * 1000;
+
+  await employeeDoc.save();
 
   await sendEmail({
-    to: employee.email,
+    to: employeeDoc.email,
     subject: "Verify your email",
     html: verifyEmailOtpTemplate(otp),
   });
@@ -117,60 +131,85 @@ export const sendEmailOTP = async (req, res) => {
   res.json({ message: "OTP sent to email" });
 };
 
-/* ================= VERIFY EMAIL OTP ================= */
+////////------------------VERIFY EMAIL OTP--------------------//////////
+
 export const verifyEmailOTP = async (req, res) => {
   const { otp } = req.body;
 
-  const employee = await Employee.findById(req.user.userId);
+  const employeeDoc = await Employee.findById(req.user.userId);
 
-  if (
-    employee.emailOTP !== Number(otp) ||
-    employee.emailOTPExpiry < Date.now()
-  ) {
-    return res.status(400).json({ message: "Invalid or expired OTP" });
+  if (!employeeDoc) {
+    return res.status(404).json({ message: "User not found" });
   }
 
-  employee.emailVerified = true;
-  employee.emailOTP = null;
-  employee.emailOTPExpiry = null;
-  await employee.save();
+  if (
+    employeeDoc.emailOTP !== Number(otp) ||
+    employeeDoc.emailOTPExpiry < Date.now()
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Invalid or expired OTP" });
+  }
+
+  employeeDoc.emailVerified = true;
+  employeeDoc.emailOTP = null;
+  employeeDoc.emailOTPExpiry = null;
+
+  await employeeDoc.save();
 
   res.json({ message: "Email verified successfully" });
 };
 
-/* ================= FORGOT PASSWORD ================= */
+////////------------------FORGOT PASSWORD--------------------//////////
+
 export const forgotPassword = async (req, res) => {
-  const employee = await Employee.findOne({ email: req.body.email });
+  const employeeDoc = await Employee.findOne({
+    email: req.body.email,
+  });
+
+  if (!employeeDoc) {
+    return res.status(404).json({ message: "User not found" });
+  }
 
   const resetToken = crypto.randomBytes(32).toString("hex");
-  employee.forgotPasswordToken = crypto
+
+  employeeDoc.forgotPasswordToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
 
-  employee.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000;
-  await employee.save();
+  employeeDoc.forgotPasswordExpiry =
+    Date.now() + 15 * 60 * 1000;
 
-  // send email (same as your code)
+  await employeeDoc.save();
+
   res.json({ message: "Password reset link sent" });
 };
 
-/* ================= RESET PASSWORD ================= */
+////////------------------RESET PASSWORD--------------------//////////
+
 export const resetPasswordController = async (req, res) => {
   const hashedToken = crypto
     .createHash("sha256")
     .update(req.params.token)
     .digest("hex");
 
-  const employee = await Employee.findOne({
+  const employeeDoc = await Employee.findOne({
     forgotPasswordToken: hashedToken,
     forgotPasswordExpiry: { $gt: Date.now() },
   });
 
-  employee.password = await bcrypt.hash(req.body.newPassword, 10);
-  employee.forgotPasswordToken = null;
-  employee.forgotPasswordExpiry = null;
-  await employee.save();
+  if (!employeeDoc) {
+    return res
+      .status(400)
+      .json({ message: "Invalid or expired token" });
+  }
+
+  employeeDoc.password = req.body.newPassword; // pre-save hook will hash
+  employeeDoc.forgotPasswordToken = null;
+  employeeDoc.forgotPasswordExpiry = null;
+
+  await employeeDoc.save();
 
   res.json({ message: "Password reset successful" });
 };
@@ -185,17 +224,23 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(401).json({ message: "No refresh token" });
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
 
-    const user = await Employee.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+    const employeeDoc = await Employee.findById(decoded.id);
+
+    if (!employeeDoc) {
+      return res
+        .status(401)
+        .json({ message: "Invalid refresh token" });
     }
 
-    const newAccessToken = generateAccessToken(user);
+    const newAccessToken = generateAccessToken(employeeDoc);
 
     res.json({ accessToken: newAccessToken });
-  } catch (error) {
+  } catch {
     return res
       .status(401)
       .json({ message: "Invalid or expired refresh token" });
