@@ -1,6 +1,7 @@
-import Employee from "../../models/Employee.js";
 
 ////////------------------get Pending Employees--------------------//////////
+
+import Employee from "../../models/employee.model.js";
 
 
 export const getPendingEmployees = async (req, res) => {

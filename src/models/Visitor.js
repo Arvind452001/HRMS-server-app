@@ -17,6 +17,21 @@ const experienceOptions = [
   "10+ years",
 ];
 
+const interviewDomainOptions = [
+  "MERN",
+  "React",
+  "Node.js",
+  "Java",
+  "Python",
+  "DevOps",
+  "UI/UX",
+  "QA",
+  "Data Science",
+  "Flutter",
+  "Android",
+  "iOS",
+];
+
 const visitorSchema = new mongoose.Schema(
   {
     type: {
@@ -55,7 +70,10 @@ const visitorSchema = new mongoose.Schema(
 
     /* ================= Interview Only ================= */
 
-    domain: String,
+    domain: {
+      type: String,
+      enum: interviewDomainOptions,
+    },
 
     totalExperience: {
       type: String,
@@ -63,11 +81,11 @@ const visitorSchema = new mongoose.Schema(
     },
 
     currentCtc: {
-      type: String,   // ✅ Now string like "6 LPA"
+      type: String, // ✅ Now string like "6 LPA"
     },
 
     expectedCtc: {
-      type: String,   // ✅ Now string like "9 LPA"
+      type: String, // ✅ Now string like "9 LPA"
     },
 
     currentOrganization: String,
@@ -86,7 +104,7 @@ const visitorSchema = new mongoose.Schema(
       default: "pending",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 /* 🔐 Encrypt password before save */

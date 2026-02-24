@@ -1,22 +1,40 @@
-import Employee from "../../models/Employee.js";
+import Employee from "../../models/employee.model.js";
 
 // GET /admin/Employees
 export const getAllEmployees = async (req, res) => {
   try {
-    const { status, active } = req.query;
+    const { status, active, role } = req.query;
 
     const filter = {};
-    if (status) filter.status = status;
-    if (active !== undefined) filter.isActive = active === "true";
 
-    const Employees = await Employee.find(filter).select("-password");
+    // Filter by status
+    if (status) {
+      filter.status = status;
+    }
+
+    // Filter by active state
+    if (active !== undefined) {
+      filter.isActive = active === "true";
+    }
+
+    // Filter by role (IMPORTANT)
+    if (role) {
+      filter.role = role;
+    }
+
+    const employees = await Employee.find(filter).select("-password");
 
     res.status(200).json({
       success: true,
-      data: Employees,
+      count: employees.length,
+      data: employees,
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

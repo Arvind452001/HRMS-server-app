@@ -1,11 +1,20 @@
 import express from "express";
-import { createInterview, deleteInterview, getInterviewsByApplication, updateInterview } from "../controllers/jodsController/interview.controller";
+import {
+  cancelInterview,
+  completeInterview,
+  getCandidateInterviews,
+  getCandidateSummary,
+  getInterviewerInterviews,
+  scheduleInterview,
+} from "../controllers/InterviewController/interview.controller.js";
 
 const router = express.Router();
 
-router.post("/create", createInterview);
-router.get("/:applicationId", getInterviewsByApplication);
-router.patch("/updateInterview/:id", updateInterview);
-router.delete("/deleteInterview/:id", deleteInterview);
+router.post("/schedule", scheduleInterview);
+router.put("/:interviewId/review", completeInterview);
+router.put("/:id/cancle", cancelInterview);
+router.get("/interviewer/:employeeId", getInterviewerInterviews); 
+router.get("/candidate/:candidateId", getCandidateInterviews);
+router.get("/CandidateSummary/:candidateId", getCandidateSummary);
 
 export default router;

@@ -8,7 +8,7 @@ const employeeSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true, // automatically indexed
+      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -16,7 +16,7 @@ const employeeSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      select: false, // never return password by default
+      select: false,
     },
 
     role: {
@@ -31,24 +31,13 @@ const employeeSchema = new mongoose.Schema(
     employeeCode: {
       type: String,
       unique: true,
-      sparse: true, // unique only when value exists
+      sparse: true,
       default: null,
     },
 
-    department: {
-      type: String,
-      default: null,
-    },
-
-    designation: {
-      type: String,
-      default: null,
-    },
-
-    dateOfJoining: {
-      type: Date,
-      default: null,
-    },
+    department: { type: String, default: null },
+    designation: { type: String, default: null },
+    dateOfJoining: { type: Date, default: null },
 
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -56,52 +45,19 @@ const employeeSchema = new mongoose.Schema(
       default: null,
     },
 
-    approvedAt: {
-      type: Date,
-      default: null,
-    },
+    approvedAt: { type: Date, default: null },
 
     /* ================= EMPLOYEE DATA ================= */
 
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true },
+    dateOfBirth: { type: Date, default: null },
+    contactNo: { type: String, default: null },
+    personalEmail: { type: String, lowercase: true, trim: true, default: null },
+    currentAddress: { type: String, default: null },
+    permanentAddress: { type: String, default: null },
+    emergencyNo: { type: String, default: null },
 
-    dateOfBirth: {
-      type: Date,
-      default: null,
-    },
-
-    contactNo: {
-      type: String,
-      default: null,
-    },
-
-    personalEmail: {
-      type: String,
-      lowercase: true,
-      trim: true,
-      default: null,
-    },
-
-    currentAddress: {
-      type: String,
-      default: null,
-    },
-
-    permanentAddress: {
-      type: String,
-      default: null,
-    },
-
-    emergencyNo: {
-      type: String,
-      default: null,
-    },
-
-    /* ================= APPROVAL / STATUS ================= */
+    /* ================= STATUS ================= */
 
     status: {
       type: String,
@@ -112,72 +68,39 @@ const employeeSchema = new mongoose.Schema(
 
     isActive: {
       type: Boolean,
-      default: false, // login blocked until approval
+      default: false,
       index: true,
     },
 
-    /* ================= EMAIL VERIFICATION ================= */
+    emailVerified: { type: Boolean, default: false },
+    emailOTP: { type: Number, default: null },
+    emailOTPExpiry: { type: Date, default: null },
 
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-
-    emailOTP: {
-      type: Number,
-      default: null,
-    },
-
-    emailOTPExpiry: {
-      type: Date,
-      default: null,
-    },
-
-    /* ================= PASSWORD RESET ================= */
-
-    forgotPasswordToken: {
-      type: String,
-      default: null,
-    },
-
-    forgotPasswordExpiry: {
-      type: Date,
-      default: null,
-    },
+    forgotPasswordToken: { type: String, default: null },
+    forgotPasswordExpiry: { type: Date, default: null },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
+/* ================= PASSWORD HASHING ================= */
 
-// ================= PASSWORD HASHING =================
-
-employeeSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+employeeSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
-
-// ================= PASSWORD COMPARE METHOD =================
+/* ================= PASSWORD COMPARE ================= */
 
 employeeSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-
-// ================= SAFE MODEL EXPORT =================
-
-// ================= SAFE MODEL EXPORT =================
+/* ================= SAFE MODEL EXPORT ================= */
 
 const Employee =
   mongoose.models.Employee ||
   mongoose.model("Employee", employeeSchema);
 
 export default Employee;
-
-
-

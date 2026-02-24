@@ -1,7 +1,8 @@
-import bcrypt from "bcryptjs";
 import Employee from "../../models/employee.model.js";
 
 /* ================= REGISTER EMPLOYEE ================= */
+
+
 export const registerEmployee = async (req, res) => {
   try {
     const {
@@ -16,33 +17,55 @@ export const registerEmployee = async (req, res) => {
       emergencyNo,
     } = req.body;
 
-    const exists = await Employee.findOne({ email });
-    if (exists) {
-      return res.status(400).json({ message: "Email already registered" });
+    console.log("Register Body:", req.body);
+
+    /* ================= Validation ================= */
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, Email and Password are required",
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    /* ================= Check Existing ================= */
+    const exists = await Employee.findOne({ email });
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
 
-    await Employee.create({
+    /* ================= Create Employee ================= */
+    const employee = await Employee.create({
       name,
       email,
-      password: hashedPassword,
+      password, // 🔥 plain password (schema will hash it)
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
       contactNo: contactNo || null,
       personalEmail: personalEmail || null,
       currentAddress: currentAddress || null,
       permanentAddress: permanentAddress || null,
       emergencyNo: emergencyNo || null,
+      role: "employee",
       status: "pending",
       isActive: false,
       emailVerified: false,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
+      success: true,
       message: "Registration successful. Waiting for HR approval.",
+      data: employee,
     });
-  } catch {
-    res.status(500).json({ message: "Registration failed" });
+
+  } catch (error) {
+    console.error("Register Employee Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Registration failed",
+    });
   }
 };
 
