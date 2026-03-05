@@ -5,7 +5,7 @@ import Job from "../../models/job.model.js";
    APPLY FOR JOB (PUBLIC)
 ===================================================== */
 export const applyForJob = async (req, res) => {
-  console.log("Job apply api called"); // Debugging log
+  // console.log("Job apply api called"); // Debugging log
   try {
     const { jobId } = req.params;
 

@@ -1,32 +1,31 @@
-import Leave from "../../models/leave.js";
-
+import Leave from "../../models/Leave.js";
 /**
- * GET /admin/leaves/pending
+ * GET /admin/Leaves/pending
  */
 export const getPendingLeaves = async (req, res) => {
   try {
-    const leaves = await Leave.find({ status: "pending" }).populate("employee");
-    res.status(200).json({ success: true, data: leaves });
+    const Leaves = await Leave.find({ status: "pending" }).populate("employee");
+    res.status(200).json({ success: true, data: Leaves });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 /**
- * PATCH /admin/leaves/:id/status
+ * PATCH /admin/Leaves/:id/status
  */
 export const updateLeaveStatus = async (req, res) => {
   try {
-    const { leaveId } = req.params;
+    const { LeaveId } = req.params;
     const { status } = req.body;
 
-    const leave = await Leave.findByIdAndUpdate(
-      leaveId,
+    const Leave = await Leave.findByIdAndUpdate(
+      LeaveId,
       { status },
       { new: true },
     );
 
-    if (!leave) {
+    if (!Leave) {
       return res
         .status(404)
         .json({ success: false, message: "Leave not found" });
@@ -35,7 +34,7 @@ export const updateLeaveStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Leave ${status}`,
-      data: leave,
+      data: Leave,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

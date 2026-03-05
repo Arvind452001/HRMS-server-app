@@ -1,5 +1,4 @@
-import Leave from "../../models/leave.js";
-
+import Leave from "../../models/Leave.js";
 /**
  * POST /employee/leave/apply
  */
