@@ -1,15 +1,18 @@
-import jobModel from "../../models/job.model.js";
+// import Job from "../models/Job.js";
+import mongoose from "mongoose";
+import slugify from "slugify";
+import Job from "../../models/job.model.js";
 
-/**
- * POST /jobs
- */
+
+// import jobModel from "../../models/job.model.js";
+/* ================= CREATE JOB ================= */
+
 export const createJob = async (req, res) => {
   try {
     const {
       title,
       department,
       companyName,
-      industry,
       location,
       workplaceType,
       employmentType,
@@ -28,25 +31,14 @@ export const createJob = async (req, res) => {
       applicationEmail,
       applicationLink,
       applicationDeadline,
-      requiredDocuments,
-      contactPerson,
-      status,
       visibility,
+      status,
     } = req.body;
 
-    // Basic required validation
-    if (!title || !companyName || !location || !employmentType || !overview) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all required fields",
-      });
-    }
-
-    const job = await jobModel.create({
+    const job = new Job({
       title,
       department,
       companyName,
-      industry,
       location,
       workplaceType,
       employmentType,
@@ -65,46 +57,214 @@ export const createJob = async (req, res) => {
       applicationEmail,
       applicationLink,
       applicationDeadline,
-      requiredDocuments,
-      contactPerson,
-      status,
       visibility,
-      postedBy: req.user._id, // protected field
+      status,
+      postedBy: "6996c0e721fa7e89b010638c",
+      // postedBy: req.user._id, // from auth middleware
     });
+
+    const savedJob = await job.save();
 
     res.status(201).json({
       success: true,
       message: "Job created successfully",
-      data: job,
+      data: savedJob,
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(400).json({
       success: false,
       message: error.message,
     });
   }
 };
 
+/* ================= UPDATE JOB ================= */
 
-// ====== GET /jobs (With Filtering + Only Active) ========//
 
+export const updateJob = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate Job ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Job ID",
+      });
+    }
+
+    const job = await Job.findById(id);
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found",
+      });
+    }
+
+    // Ownership check
+    if (job.postedBy.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to update this job",
+      });
+    }
+
+    // Prevent editing closed jobs
+// if (job.status === "Closed") {
+//   const allowedFields = ["status"];
+
+//   const updateFields = Object.keys(req.body).filter(
+//     (field) => field !== "_id"
+//   );
+
+//   const isOnlyStatusUpdate = updateFields.every((field) =>
+//     allowedFields.includes(field)
+//   );
+
+//   if (!isOnlyStatusUpdate) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Closed jobs can only update status",
+//     });
+//   }
+// }
+
+    const updateData = { ...req.body };
+
+    // Restricted fields
+    const restrictedFields = [
+      "postedBy",
+      "slug",
+      "createdAt",
+      "updatedAt",
+      "__v",
+      "totalApplications",
+      "isActive",
+    ];
+
+    restrictedFields.forEach((field) => delete updateData[field]);
+
+    // Regenerate slug if title changed
+    if (updateData.title && updateData.title !== job.title) {
+      updateData.slug = slugify(`${updateData.title}-${Date.now()}`, {
+        lower: true,
+        strict: true,
+      });
+    }
+
+    const updatedJob = await Job.findByIdAndUpdate(
+      id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Job updated successfully",
+      data: updatedJob,
+    });
+
+  } catch (error) {
+    console.error("Update Job Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/* ================= DELETE JOB (SOFT DELETE) ================= */
+
+export const deleteJob = async (req, res) => {
+  // console.log("deleteJob")
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Job ID",
+      });
+    }
+
+    const job = await Job.findById(id);
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found",
+      });
+    }
+
+    // Ownership check
+    if (job.postedBy.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to delete this job",
+      });
+    }
+
+    // Optional safety check
+    if (job.status !== "Archived") {
+      return res.status(400).json({
+        success: false,
+        message: "Only archived jobs can be deleted permanently",
+      });
+    }
+
+    await Job.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Job deleted permanently",
+    });
+
+  } catch (error) {
+    console.error("Delete Job Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/* ================= GET ALL JOBS (ADMIN) ================= */
 export const getAllJobs = async (req, res) => {
   try {
-    const { status, department, location } = req.query;
+    const { page = 1, limit = 10, status } = req.query;
 
-    const query = { isActive: true };
+    const query = {
+      postedBy: new mongoose.Types.ObjectId(req.user._id),
+      isActive: true,
+    };
 
-    if (status) query.status = status;
-    if (department) query.department = department;
-    if (location) query.location = location;
+    // const query = {};
 
-    const jobs = await Job.find(query)
+    if (status) {
+      query.status = status;
+    }
+
+    // const jobs = await Job.find(query) // ✅ query yaha use karo
+
+    const jobs = await Job.find()
+      .populate("requiredSkills goodToHaveSkills")
       .sort({ createdAt: -1 })
-      .populate("postedBy", "name email");
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Job.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      count: jobs.length,
+      total,
+      page: Number(page),
       data: jobs,
     });
   } catch (error) {
@@ -115,14 +275,17 @@ export const getAllJobs = async (req, res) => {
   }
 };
 
-// ====== GET /jobs/:id ========//
-
-export const getJobById = async (req, res) => {
+/* ================= GET SINGLE JOB BY SLUG ================= */
+export const getJobBySlug = async (req, res) => {
   try {
+    const { slug } = req.params;
+
     const job = await Job.findOne({
-      _id: req.params.id,
-      isActive: true,
-    }).populate("postedBy", "name email");
+      slug,
+      status: "Published",     // Only published jobs
+      visibility: "Public",    // Only public jobs
+      isActive: true,          // Only active jobs
+    });
 
     if (!job) {
       return res.status(404).json({
@@ -131,120 +294,17 @@ export const getJobById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: job,
     });
+
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Invalid Job ID",
-    });
-  }
-};
-
-
-
-// ===========PATCH /jobs/:id (Safe Update)===========//
-
-export const updateJob = async (req, res) => {
-  try {
-    const filteredData = filterAllowedFields(req.body);
-
-    const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      filteredData,
-      { new: true, runValidators: true }
-    );
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Job updated successfully",
-      data: job,
-    });
-  } catch (error) {
-    res.status(400).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
-
-//==============PATCH /jobs/:id/status (Controlled Update)==============//
-export const updateJobStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    const allowedStatus = ["Draft", "Published", "Closed"];
-
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status value",
-      });
-    }
-
-    const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      { status },
-      { new: true, runValidators: true }
-    );
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Job status updated successfully",
-      data: job,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-//=============== DELETE /jobs/:id (Soft Delete – HRMS Standard)=================//
-export const deleteJob = async (req, res) => {
-  try {
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Job deleted successfully",
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Invalid Job ID",
-    });
-  }
-};
-
-
 
 

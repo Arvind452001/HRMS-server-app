@@ -3,7 +3,7 @@ import Visitor from "../../models/Visitor.js";
 import Employee from "../../models/employee.model.js";
 
 /* ================= ROUND ORDER ================= */
-const roundOrder = ["HR", "Technical", "Machine Coding", "Director"];
+const roundOrder = ["HR", "Technical", "Machine Coding", "Director", "Salary Discussion","Document Verification","Joining Form",];
 
 /* ============================================================
    1️⃣ SCHEDULE INTERVIEW

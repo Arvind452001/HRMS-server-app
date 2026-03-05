@@ -10,10 +10,10 @@ import authRoutes from "./routes/auth.routes.js";
 import employeeRoutes from "./routes/employee.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 // import jobRoutes from "./routes/job.routes.js";
-import candidateRoutes from "./routes/candidate.routes.js";
-// import applicationRoutes from "./routes/application.routes.js";
+// import candidateRoutes from "./routes/candidate.routes.js";
+import applicationRoutes from "./routes/application.routes.js";
 import interviewRoutes from "./routes/interview.routes.js";
-// import offerRoutes from "./routes/offer.routes.js";
+import jobRoutes from "./routes/job.routes.js";
 
 dotenv.config();
 
@@ -39,9 +39,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/admin", adminRoutes);
 // app.use("/api/jobs", jobRoutes);
-app.use("/api/candidates", candidateRoutes);
-// app.use("/api/applications", applicationRoutes);
+// app.use("/api/candidates", candidateRoutes);
+app.use("/api/applications", applicationRoutes);
 app.use("/api/interview", interviewRoutes);
+// app.use("/api/offerletter", offerRoutes);
+app.use("/api/jobs", jobRoutes);
 // app.use("/api/offerletter", offerRoutes);
 
 /* ===== SERVER START ===== */

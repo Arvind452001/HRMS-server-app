@@ -34,26 +34,71 @@ const interviewDomainOptions = [
 
 const visitorSchema = new mongoose.Schema(
   {
+    /* ================= VISIT TYPE ================= */
+
     type: {
       type: String,
       enum: ["enquiry", "training", "interview", "candidate", "client"],
       required: true,
     },
 
+    /* ================= COMMON CANDIDATE FIELDS ================= */
+
     fullName: {
       type: String,
       required: true,
+      trim: true,
     },
 
     phone: {
       type: String,
       required: true,
+      trim: true,
     },
 
     email: {
       type: String,
       required: true,
+      lowercase: true,
+      trim: true,
     },
+
+    totalExperience: {
+      type: String,
+      enum: experienceOptions,
+    },
+
+    currentCtc: {
+      type: String,
+    },
+
+    expectedCtc: {
+      type: String,
+    },
+
+    currentOrganization: {
+      type: String,
+      trim: true,
+    },
+
+    skills: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
+    resumeUrl: {
+      type: String,
+    },
+
+    source: {
+      type: String,
+      enum: ["Walk-in", "Online", "Referral", "LinkedIn"],
+      default: "Walk-in",
+    },
+
+    /* ================= VISITOR SPECIFIC ================= */
 
     purposeOfVisit: String,
     personToMeet: String,
@@ -64,35 +109,20 @@ const visitorSchema = new mongoose.Schema(
 
     remarks: String,
 
-    /* ================= Candidate Only ================= */
+    /* ================= CANDIDATE ONLY ================= */
 
     technology: String,
 
-    /* ================= Interview Only ================= */
+    /* ================= INTERVIEW ONLY ================= */
 
     domain: {
       type: String,
       enum: interviewDomainOptions,
     },
 
-    totalExperience: {
-      type: String,
-      enum: experienceOptions,
-    },
-
-    currentCtc: {
-      type: String, // ✅ Now string like "6 LPA"
-    },
-
-    expectedCtc: {
-      type: String, // ✅ Now string like "9 LPA"
-    },
-
-    currentOrganization: String,
-
     jobSource: String,
 
-    /* ================= Auth ================= */
+    /* ================= AUTH ================= */
 
     password: {
       type: String,
@@ -104,7 +134,7 @@ const visitorSchema = new mongoose.Schema(
       default: "pending",
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 /* 🔐 Encrypt password before save */
