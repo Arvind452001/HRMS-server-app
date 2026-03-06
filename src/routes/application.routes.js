@@ -19,7 +19,7 @@ router.post("/apply/:jobId", applyForJob);
 router.get("/getAllApplications", authMiddleware, getAllApplications);
 router.get("/job/:jobId", authMiddleware, getApplicationsByJob);
 router.get("/:id", authMiddleware, getSingleApplication);
-router.patch("/:id/status", authMiddleware, updateApplicationStatus);
+router.patch("/updateStatus/:id/status", authMiddleware, updateApplicationStatus);
 router.delete("/:id", authMiddleware, deleteApplication);
 
 export default router;

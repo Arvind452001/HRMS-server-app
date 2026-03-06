@@ -3,6 +3,8 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 import {
   checkIn,
   checkOut,
+  getEmployeeAttendance,
+  getEmployeesWithTodayAttendance,
   getMyAttendance,
 } from "./../controllers/EmployeeControllers/employeeAttendance.controller.js";
 import {
@@ -26,6 +28,8 @@ router.get("/getMyProfile", authMiddleware, getMyProfile);
 router.post("/check-in", authMiddleware, checkIn);
 router.post("/check-out", authMiddleware, checkOut);
 router.get("/getMyAttendance", authMiddleware, getMyAttendance);
+router.get("/getEmployeesAttendance", authMiddleware, getEmployeesWithTodayAttendance);
+router.get("/employee/:employeeId/attendance", authMiddleware, getEmployeeAttendance);
 
 /* ================= LEAVE ================= */
 router.get("/leaves", authMiddleware, getMyLeaves);

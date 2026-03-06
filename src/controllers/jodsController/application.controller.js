@@ -1,5 +1,6 @@
-import applicationModel from "../../models/application.model.js";
+import Application from "../../models/application.model.js";
 import Job from "../../models/job.model.js";
+import { createAuditLog } from "../../services/audit.service.js";
 
 /* =====================================================
    APPLY FOR JOB (PUBLIC)
@@ -51,7 +52,7 @@ export const applyForJob = async (req, res) => {
     }
 
     /* ================= DUPLICATE CHECK ================= */
-    const existing = await applicationModel.findOne({
+    const existing = await Application.findOne({
       job: jobId,
       email: email.toLowerCase(),
     });
@@ -75,7 +76,7 @@ export const applyForJob = async (req, res) => {
     }
 
     /* ================= CREATE APPLICATION ================= */
-    const application = await applicationModel.create({
+    const application = await Application.create({
       job: jobId,
       fullName,
       phone,
@@ -125,14 +126,14 @@ export const getAllApplications = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const applications = await applicationModel
+    const applications = await Application
       .find(query)
       .populate("job", "title department")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
-    const total = await applicationModel.countDocuments(query);
+    const total = await Application.countDocuments(query);
 
     res.status(200).json({
       success: true,
@@ -141,6 +142,62 @@ export const getAllApplications = async (req, res) => {
       totalPages: Math.ceil(total / limit),
       totalApplications: total,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/* =====================================================
+   UPDATE APPLICATION STATUS (PIPELINE CONTROL)
+===================================================== */
+
+export const updateApplicationStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const oldApplication = await Application.findById(req.params.id);
+
+    if (!oldApplication) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+    }
+
+    // Prevent same status update
+    if (oldApplication.status === status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status already set to this value",
+      });
+    }
+
+    const application = await Application.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    // Call audit log service
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE_APPLICATION_STATUS",
+      module: "Application",
+      recordId: application._id,
+      oldData: { status: oldApplication.status },
+      newData: { status },
+      req,
+    });
+
+    res.json({
+      success: true,
+      message: "Status updated successfully",
+      data: application,
+    });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -200,53 +257,7 @@ export const getSingleApplication = async (req, res) => {
   }
 };
 
-/* =====================================================
-   UPDATE APPLICATION STATUS (PIPELINE CONTROL)
-===================================================== */
-export const updateApplicationStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
 
-    const allowedStatus = [
-      "Applied",
-      "Shortlisted",
-      "Interview",
-      "Rejected",
-      "Hired",
-    ];
-
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status value",
-      });
-    }
-
-    const application = await Application.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true, runValidators: true },
-    );
-
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: "Application not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Status updated successfully",
-      data: application,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
 
 /* =====================================================
    DELETE APPLICATION (ADMIN)
