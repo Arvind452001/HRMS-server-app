@@ -32,7 +32,7 @@ const attendanceSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["present", "absent", "leave", "half-day"],
+      enum: ["present", "absent", "cl", "pl", "half-day", "weekoff", "holiday"],
       default: "present",
     },
 
@@ -53,7 +53,7 @@ const attendanceSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 🔥 ONE attendance per employee per day
