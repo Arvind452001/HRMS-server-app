@@ -6,79 +6,85 @@ import mongoose from "mongoose";
 export const checkIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
+    const { checkInTime } = req.body; // 🔥 frontend se UTC
+  if (!checkInTime) {
+      return res.status(400).json({
+        message: "checkInTime is required",
+      });
+    }
 
-    // const clientIP =
-    //   req.headers["x-forwarded-for"]?.split(",")[0] ||
-    //   req.socket.remoteAddress;
+    const checkIn = new Date(checkInTime); // ✅ UTC
 
-    // if (!isOfficeIP(clientIP)) {
-    //   return res.status(403).json({
-    //     message: "Check-in allowed only from office network",
-    //   });
-    // }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // ✅ normalize date (UTC day)
+    const date = new Date(Date.UTC(
+      checkIn.getUTCFullYear(),
+      checkIn.getUTCMonth(),
+      checkIn.getUTCDate()
+    ));
 
     let attendance = await Attendance.findOne({
       employee: employeeId,
-      date: today,
+      date,
     });
 
-    // ❌ already checked in
     if (attendance?.checkIn) {
       return res.status(400).json({
         message: "Already checked in today",
       });
     }
 
-    // ✅ create if not exists
     if (!attendance) {
       attendance = new Attendance({
         employee: employeeId,
-        date: today,
+        date,
       });
     }
 
-    // 🔥 force set
-    attendance.employee = employeeId;
-    attendance.date = today;
-    attendance.checkIn = new Date();
+    attendance.checkIn = checkIn;
     attendance.status = "present";
     attendance.source = "web";
 
     await attendance.save();
 
     res.status(200).json({
+      success: true,
       message: "Check-in successful",
-      checkIn: attendance.checkIn,
+      data: attendance,
     });
+
   } catch (error) {
-    console.error("CHECK-IN ERROR 👉", error);
-    res.status(500).json({ message: "Check-in failed" });
-  }
+  console.error("CHECK-IN ERROR 👉", error);
+
+  res.status(500).json({
+    message: "Check-in failed",
+    error: error.message, // 🔥 add this
+  });
+}
 };
 
 /* ================= CHECK-OUT ================= */
 export const checkOut = async (req, res) => {
   try {
     const employeeId = req.user.id;
+    const { checkOutTime } = req.body;
 
-    const clientIP =
-      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
-
-    if (!isOfficeIP(clientIP)) {
-      return res.status(403).json({
-        message: "Check-out allowed only from office network",
+    if (!checkOutTime) {
+      return res.status(400).json({
+        message: "checkOutTime is required",
       });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const checkOut = new Date(checkOutTime); // ✅ UTC
+
+    const date = new Date(Date.UTC(
+      checkOut.getUTCFullYear(),
+      checkOut.getUTCMonth(),
+      checkOut.getUTCDate()
+    ));
 
     const attendance = await Attendance.findOne({
       employee: employeeId,
-      date: today,
+      date,
     });
 
     if (!attendance || !attendance.checkIn) {
@@ -93,23 +99,27 @@ export const checkOut = async (req, res) => {
       });
     }
 
-    attendance.checkOut = new Date();
+    attendance.checkOut = checkOut;
 
-    const hours = (attendance.checkOut - attendance.checkIn) / (1000 * 60 * 60);
+    // ✅ calculate hours
+    const hours =
+      (attendance.checkOut - attendance.checkIn) / (1000 * 60 * 60);
 
     attendance.totalHours = Number(hours.toFixed(2));
 
-    // 🔥 simple rule
-    attendance.status = attendance.totalHours < 4 ? "half-day" : "present";
+    // ✅ status logic
+    if (hours >= 8) attendance.status = "present";
+    else if (hours >= 4) attendance.status = "half-day";
+    else attendance.status = "absent";
 
     await attendance.save();
 
     res.status(200).json({
+      success: true,
       message: "Check-out successful",
-      checkOut: attendance.checkOut,
-      totalHours: attendance.totalHours,
-      status: attendance.status,
+      data: attendance,
     });
+
   } catch (error) {
     console.error("CHECK-OUT ERROR 👉", error);
     res.status(500).json({ message: "Check-out failed" });
@@ -119,27 +129,48 @@ export const checkOut = async (req, res) => {
 /* ================= get My Attendance ================= */
 
 export const getMyAttendance = async (req, res) => {
-  // console.log("aaaaaaaaaaaaa")
   try {
     const employeeId = req.user.id;
 
+    let { year, month } = req.query;
+
+    const today = new Date();
+
+    year = year ? Number(year) : today.getUTCFullYear();
+    month = month ? Number(month) : today.getUTCMonth() + 1;
+
+    // ✅ UTC range (IMPORTANT)
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+
     const attendanceList = await Attendance.find({
       employee: employeeId,
+      date: {
+        $gte: startDate,
+        $lte: endDate,
+      },
     }).sort({ date: -1 });
 
     const totalWorkingHours = attendanceList.reduce(
       (sum, record) => sum + (record.totalHours || 0),
-      0,
+      0
     );
 
     res.status(200).json({
+      success: true,
       totalDays: attendanceList.length,
       totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
       data: attendanceList,
     });
+
   } catch (error) {
     console.error("EMPLOYEE ATTENDANCE ERROR 👉", error);
-    res.status(500).json({ message: "Failed to fetch attendance" });
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance",
+      error: error.message,
+    });
   }
 };
 
