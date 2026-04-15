@@ -12,13 +12,13 @@ import OldEmployee from "../models/oldEmployee.model.js";
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-  const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.toLowerCase();
 
     // 🔥 FIND BY OFFICIAL EMAIL
     const employeeDoc = await OldEmployee.findOne({
       "account.officialEmail": normalizedEmail,
     });
-   if (!employeeDoc) {
+    if (!employeeDoc) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -70,9 +70,9 @@ export const login = async (req, res) => {
 export const getMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-console.log("GET PROFILE USER ID 👉", userId);
+    console.log("GET PROFILE USER ID 👉", userId);
     const employee = await OldEmployee.findById(userId).select(
-      "-account.loginPassword "
+      "-account.loginPassword ",
     );
 
     if (!employee) {
@@ -83,7 +83,6 @@ console.log("GET PROFILE USER ID 👉", userId);
       success: true,
       data: employee,
     });
-
   } catch (error) {
     console.error("GET PROFILE ERROR 👉", error);
     res.status(500).json({ message: "Failed to fetch profile" });
@@ -131,114 +130,191 @@ export const changePassword = async (req, res) => {
 };
 
 ////////------------------SEND EMAIL OTP--------------------//////////
-
 export const sendEmailOTP = async (req, res) => {
-  const employeeDoc = await Employee.findById(req.user.userId);
+  try {
+    const employeeDoc = await Employee.findById(req.user.userId);
 
-  if (!employeeDoc) {
-    return res.status(404).json({ message: "User not found" });
+    if (!employeeDoc) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (employeeDoc.emailVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    employeeDoc.emailOTP = otp;
+    employeeDoc.emailOTPExpiry = Date.now() + 10 * 60 * 1000;
+
+    await employeeDoc.save();
+
+    await sendEmail({
+      to: employeeDoc.email,
+      subject: "Verify your email",
+      html: verifyEmailOtpTemplate(otp),
+    });
+
+    res.json({ message: "OTP sent to email" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to send OTP" });
   }
-
-  if (employeeDoc.emailVerified) {
-    return res.status(400).json({ message: "Email already verified" });
-  }
-
-  const otp = Math.floor(100000 + Math.random() * 900000);
-
-  employeeDoc.emailOTP = otp;
-  employeeDoc.emailOTPExpiry = Date.now() + 10 * 60 * 1000;
-
-  await employeeDoc.save();
-
-  await sendEmail({
-    to: employeeDoc.email,
-    subject: "Verify your email",
-    html: verifyEmailOtpTemplate(otp),
-  });
-
-  res.json({ message: "OTP sent to email" });
 };
 
 ////////------------------VERIFY EMAIL OTP--------------------//////////
-
 export const verifyEmailOTP = async (req, res) => {
-  const { otp } = req.body;
+  try {
+    const { otp } = req.body;
 
-  const employeeDoc = await Employee.findById(req.user.userId);
+    const employeeDoc = await Employee.findById(req.user.userId);
 
-  if (!employeeDoc) {
-    return res.status(404).json({ message: "User not found" });
+    if (!employeeDoc) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (
+      !employeeDoc.emailOTP ||
+      employeeDoc.emailOTP !== Number(otp) ||
+      employeeDoc.emailOTPExpiry < Date.now()
+    ) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    employeeDoc.emailVerified = true;
+    employeeDoc.emailOTP = null;
+    employeeDoc.emailOTPExpiry = null;
+
+    await employeeDoc.save();
+
+    res.json({ message: "Email verified successfully" });
+  } catch {
+    res.status(500).json({ message: "Verification failed" });
   }
-
-  if (
-    employeeDoc.emailOTP !== Number(otp) ||
-    employeeDoc.emailOTPExpiry < Date.now()
-  ) {
-    return res.status(400).json({ message: "Invalid or expired OTP" });
-  }
-
-  employeeDoc.emailVerified = true;
-  employeeDoc.emailOTP = null;
-  employeeDoc.emailOTPExpiry = null;
-
-  await employeeDoc.save();
-
-  res.json({ message: "Email verified successfully" });
 };
 
 ////////------------------FORGOT PASSWORD--------------------//////////
 
 export const forgotPassword = async (req, res) => {
-  const employeeDoc = await Employee.findOne({
-    email: req.body.email,
-  });
+  try {
+    const { email } = req.body;
 
-  if (!employeeDoc) {
-    return res.status(404).json({ message: "User not found" });
+    console.log("api called", email);
+
+    // 🔥 find by nested email
+    const employeeDoc = await OldEmployee.findOne({
+      "account.officialEmail": email,
+    });
+
+    if (!employeeDoc) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // 🔥 generate token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    console.log("hashedToken", hashedToken);
+
+    // 🔥 save in DB
+    employeeDoc.forgotPasswordToken = hashedToken;
+    employeeDoc.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000;
+
+    await employeeDoc.save();
+
+    // 🔥 create URL
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    console.log("resetUrl", resetUrl);
+
+    // 🔥 send email
+    await sendEmail({
+      to: employeeDoc.account.officialEmail,
+      subject: "Reset Password",
+      html: `
+        <h3>Password Reset</h3>
+        <p>Click the button below to reset your password:</p>
+        <a href="${resetUrl}" 
+           style="padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:5px;">
+           Reset Password
+        </a>
+        <p>This link will expire in 15 minutes.</p>
+      `,
+    });
+
+    res.json({
+      message: "Password reset link sent to email 📩",
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+
+    res.status(500).json({
+      message: err.message || "Failed to process request",
+    });
   }
-
-  const resetToken = crypto.randomBytes(32).toString("hex");
-
-  employeeDoc.forgotPasswordToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
-
-  employeeDoc.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000;
-
-  await employeeDoc.save();
-
-  res.json({ message: "Password reset link sent" });
 };
 
 ////////------------------RESET PASSWORD--------------------//////////
-
 export const resetPasswordController = async (req, res) => {
-  const hashedToken = crypto
-    .createHash("sha256")
-    .update(req.params.token)
-    .digest("hex");
+  try {
+    const { newPassword } = req.body;
 
-  const employeeDoc = await Employee.findOne({
-    forgotPasswordToken: hashedToken,
-    forgotPasswordExpiry: { $gt: Date.now() },
-  });
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
 
-  if (!employeeDoc) {
-    return res.status(400).json({ message: "Invalid or expired token" });
+    // 🔥 hash token from URL
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    console.log("hashedToken", hashedToken);
+
+    // 🔥 find user
+    const employeeDoc = await OldEmployee.findOne({
+      forgotPasswordToken: hashedToken,
+      forgotPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!employeeDoc) {
+      return res.status(400).json({
+        message: "Invalid or expired token",
+      });
+    }
+
+    // 🔥 hash password manually (recommended)
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 🔥 update password (nested field)
+    employeeDoc.account.loginPassword = hashedPassword;
+
+    // 🔥 clear token
+    employeeDoc.forgotPasswordToken = null;
+    employeeDoc.forgotPasswordExpiry = null;
+
+    await employeeDoc.save();
+
+    res.json({
+      message: "Password reset successful ✅",
+    });
+  } catch (err) {
+    console.error("Reset password error:", err);
+
+    res.status(500).json({
+      message: err.message || "Reset failed",
+    });
   }
-
-  employeeDoc.password = req.body.newPassword; // pre-save hook will hash
-  employeeDoc.forgotPasswordToken = null;
-  employeeDoc.forgotPasswordExpiry = null;
-
-  await employeeDoc.save();
-
-  res.json({ message: "Password reset successful" });
 };
-
 ////////------------------REFRESH ACCESS TOKEN--------------------//////////
-
 export const refreshAccessToken = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -259,8 +335,8 @@ export const refreshAccessToken = async (req, res) => {
 
     res.json({ accessToken: newAccessToken });
   } catch {
-    return res
-      .status(401)
-      .json({ message: "Invalid or expired refresh token" });
+    res.status(401).json({
+      message: "Invalid or expired refresh token",
+    });
   }
 };

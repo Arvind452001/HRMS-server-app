@@ -15,6 +15,7 @@ import applicationRoutes from "./routes/application.routes.js";
 import interviewRoutes from "./routes/interview.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import oldEmployeeRoutes from "./routes/oldEmployee.Routes.js";
+import salaryRoutes from "./routes/salary.route.js";
 
 dotenv.config();
 
@@ -47,6 +48,8 @@ app.use("/api/interview", interviewRoutes);
 app.use("/api/jobs", jobRoutes);
 // app.use("/api/offerletter", offerRoutes);
 app.use("/api/oldEmployees", oldEmployeeRoutes);
+app.use('/api/salary', salaryRoutes);
+
 
 /* ===== SERVER START ===== */
 app.listen(port, () => {

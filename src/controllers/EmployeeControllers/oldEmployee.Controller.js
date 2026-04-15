@@ -312,7 +312,7 @@ export const updateEmployee = async (req, res) => {
 
 // ==================== GET ALL EMPLOYEES (NEW + OLD) ====================
 export const getAllEmployees = async (req, res) => {
-  console.log("Total employees fetched:");
+  // console.log("Total employees fetched:");
   try {
     const newEmployees = await Employee.find().lean();
     const oldEmployees = await OldEmployee.find().lean();
@@ -330,7 +330,7 @@ export const getAllEmployees = async (req, res) => {
     const allEmployees = [...formattedNew, ...formattedOld].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
-console.log("Total employees fetched:", allEmployees);
+// console.log("Total employees fetched:", allEmployees);
     res.status(200).json({
       success: true,
       count: allEmployees.length,

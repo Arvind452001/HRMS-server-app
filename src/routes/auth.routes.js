@@ -11,9 +11,10 @@ router.post("/register", validate(registerSchema), registerEmployee);
 router.post("/login", validate(loginSchema), login);
 router.get("/my-profile", authMiddleware, getMyProfile);
 router.put("/change-password", authMiddleware, changePassword);
+
 router.post("/forgot-password", forgotPassword);
-router.post("/reset-password/:token", resetPasswordController);
 router.post("/verify-email/send-otp", authMiddleware, sendEmailOTP);
 router.post("/verify-email", authMiddleware, verifyEmailOTP);
+router.post("/reset-password/:token", resetPasswordController);
 
 export default router;

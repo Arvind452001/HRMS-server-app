@@ -150,6 +150,13 @@ const employeeSchema = new Schema(
       enum: ["employee", "hr"],
       default: "employee",
     },
+    // 🔥 ADD HERE (IMPORTANT)
+    forgotPasswordToken: {
+      type: String,
+    },
+    forgotPasswordExpiry: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
