@@ -1,4 +1,4 @@
-import Attendance from "../models/attendance.model.js";
+import Attendance from "../models/Attendance.js";
 
 export const autoCheckoutToday = async () => {
   const today = new Date();

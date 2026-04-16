@@ -4,7 +4,7 @@ const salarySchema = new mongoose.Schema(
   {
     employee: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "OldEmployee", // 👈 yaha correct model name
+      ref: "OldEmployee",
       required: true,
     },
     salaryType: {
@@ -16,6 +16,7 @@ const salarySchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+
     basic: { type: Number, default: 0 },
     hra: { type: Number, default: 0 },
     da: { type: Number, default: 0 },
@@ -30,28 +31,54 @@ const salarySchema = new mongoose.Schema(
     gross: { type: Number, default: 0 },
     net: { type: Number, default: 0 },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-// 🔥 FIXED
-// salarySchema.pre("save", function (next) {
-//   const earnings =
-//     (this.basic || 0) +
-//     (this.hra || 0) +
-//     (this.da || 0) +
-//     (this.specialAllowance || 0) +
-//     (this.bonus || 0);
 
-//   const deductions =
-//     (this.pf || 0) +
-//     (this.esi || 0) +
-//     (this.tax || 0) +
-//     (this.otherDeduction || 0);
 
-//   this.gross = earnings;
-//   this.net = earnings - deductions;
+// 🔥 COMMON CALC FUNCTION (reuse)
+const calculateSalary = (data) => {
+  const earnings =
+    (data.basic || 0) +
+    (data.hra || 0) +
+    (data.da || 0) +
+    (data.specialAllowance || 0) +
+    (data.bonus || 0);
 
-//   next();
-// });
+  const deductions =
+    (data.pf || 0) +
+    (data.esi || 0) +
+    (data.tax || 0) +
+    (data.otherDeduction || 0);
+
+  return {
+    gross: earnings,
+    net: earnings - deductions,
+  };
+};
+
+
+
+// ✅ CREATE / SAVE HOOK
+salarySchema.pre("save", function () {
+  const { gross, net } = calculateSalary(this);
+
+  this.gross = gross;
+  this.net = net;
+});
+
+
+
+// ✅ UPDATE HOOK (VERY IMPORTANT)
+salarySchema.pre("findOneAndUpdate", function () {
+  const update = this.getUpdate();
+
+  const { gross, net } = calculateSalary(update);
+
+  update.gross = gross;
+  update.net = net;
+});
+
+
 
 export default mongoose.model("Salary", salarySchema);

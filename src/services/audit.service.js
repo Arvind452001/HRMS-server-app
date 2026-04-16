@@ -5,28 +5,22 @@ export const createAuditLog = async ({
   action,
   module,
   recordId,
-  oldData,
-  newData,
+  oldData = null,
+  newData = null,
   req,
 }) => {
   try {
-    if (oldApplication.status === status) {
-  return res.status(400).json({
-    success: false,
-    message: "Status already set to this value",
-  });
-}
     await AuditLog.create({
-      userId: user?._id,
-      userName: user?.name,
+      userId: user?.id || null,
+      userName: user?.name || "System",
       action,
       module,
       recordId,
       oldData,
       newData,
-      ipAddress: req.ip,
+      ipAddress: req?.ip || "",
     });
   } catch (error) {
-    console.error("Audit log error:", error);
+    console.error("Audit log error:", error.message);
   }
 };

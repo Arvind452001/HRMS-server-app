@@ -4,13 +4,14 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 
+/* ===== CRON ===== */
+import "./cron/autoCheckout.cron.js"; // 🔥 ADD THIS
+
 /* ===== ROUTES ===== */
 import visitorRoutes from "./routes/visitor.Routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import employeeRoutes from "./routes/employee.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
-// import jobRoutes from "./routes/job.routes.js";
-// import candidateRoutes from "./routes/candidate.routes.js";
 import applicationRoutes from "./routes/application.routes.js";
 import interviewRoutes from "./routes/interview.routes.js";
 import jobRoutes from "./routes/job.routes.js";
@@ -40,16 +41,11 @@ app.use("/api/visitor", visitorRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/admin", adminRoutes);
-// app.use("/api/jobs", jobRoutes);
-// app.use("/api/candidates", candidateRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/interview", interviewRoutes);
-// app.use("/api/offerletter", offerRoutes);
 app.use("/api/jobs", jobRoutes);
-// app.use("/api/offerletter", offerRoutes);
 app.use("/api/oldEmployees", oldEmployeeRoutes);
-app.use('/api/salary', salaryRoutes);
-
+app.use("/api/salary", salaryRoutes);
 
 /* ===== SERVER START ===== */
 app.listen(port, () => {
