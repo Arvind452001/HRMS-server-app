@@ -174,31 +174,69 @@ export const getMyAttendance = async (req, res) => {
   }
 };
 
+export const getEmployeesWithTodayAttendance = async (req, res) => {
+ try {
+  
+ } catch (error) {
+  
+ }
+};
 /* ================= get Employees With Today Attendance ================= */
 
-export const getEmployeesWithTodayAttendance = async (req, res) => {
+export const getEmployeesAttendanceByDate = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { date } = req.query;
 
-    const employees = await Employee.find();
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
 
-    const attendance = await Attendance.find({
-      date: today,
+    // ✅ normalize date (UTC)
+    const targetDate = new Date(date);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    // 👉 range (important for safety)
+    const nextDate = new Date(targetDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+    // ✅ fetch data
+    const [employees, attendance] = await Promise.all([
+      Employee.find(),
+      Attendance.find({
+        date: {
+          $gte: targetDate,
+          $lt: nextDate,
+        },
+      }),
+    ]);
+
+    // ✅ map for O(1) lookup
+    const attendanceMap = {};
+    attendance.forEach((att) => {
+      attendanceMap[att.employee.toString()] = att;
     });
 
+    // ✅ final result
     const result = employees.map((emp) => {
-      const todayAttendance = attendance.find(
-        (att) => att.employeeId.toString() === emp._id.toString(),
-      );
+      const att = attendanceMap[emp._id.toString()];
 
       return {
-        ...emp._doc,
-        todayStatus: todayAttendance?.status || "Absent",
+        _id: emp._id,
+        name: emp.personal?.fullName,
+        employeeId: emp.professional?.employeeId,
+
+        status: att ? att.status : "absent",
+        checkIn: att?.checkIn || null,
+        checkOut: att?.checkOut || null,
+        totalHours: att?.totalHours || 0,
       };
     });
 
-    res.json(result);
+    res.json({
+      date: targetDate,
+      totalEmployees: employees.length,
+      data: result,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -216,5 +254,65 @@ export const getEmployeeAttendance = async (req, res) => {
     res.json(attendance);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const getTodayAttendance = async (req, res) => {
+  try {
+    const employeeId = req.user.id;
+
+    const now = new Date();
+
+    const startOfDay = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+      )
+    );
+
+    const endOfDay = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23, 59, 59, 999
+      )
+    );
+
+    const attendance = await Attendance.findOne({
+      employee: employeeId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (!attendance) {
+      return res.json({
+        status: "not_checked_in",
+      });
+    }
+
+    let workingHours = 0;
+
+    if (attendance.checkIn) {
+      const endTime = attendance.checkOut
+        ? attendance.checkOut
+        : new Date();
+
+      workingHours =
+        (endTime - attendance.checkIn) / (1000 * 60 * 60);
+    }
+
+    return res.json({
+      status: attendance.checkOut
+        ? "completed"
+        : "in_progress",
+
+      checkIn: attendance.checkIn,
+      checkOut: attendance.checkOut,
+      workingHours: Number(workingHours.toFixed(2)),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching attendance" });
   }
 };

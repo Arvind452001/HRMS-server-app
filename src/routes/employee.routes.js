@@ -6,6 +6,7 @@ import {
   getEmployeeAttendance,
   getEmployeesWithTodayAttendance,
   getMyAttendance,
+  getTodayAttendance,
  
 } from "./../controllers/EmployeeControllers/employeeAttendance.controller.js";
 import {
@@ -31,6 +32,7 @@ router.post("/check-out", authMiddleware, checkOut);
 router.get("/attendance/my", authMiddleware, getMyAttendance);
 router.get("/getEmployeesAttendance", authMiddleware, getEmployeesWithTodayAttendance);
 router.get("/employee/:employeeId/attendance", authMiddleware, getEmployeeAttendance);
+router.get("/getTodayAttendance", authMiddleware, getTodayAttendance);
 
 /* ================= LEAVE ================= */
 router.get("/leaves", authMiddleware, getMyLeaves);
