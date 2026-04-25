@@ -13,10 +13,6 @@ import {
   getMyProfile,
   updateMyProfile,
 } from "../controllers/EmployeeControllers/employee.controller.js";
-import {
-  applyLeave,
-  getMyLeaves,
-} from "../controllers/EmployeeControllers/employee.leave.controller.js";
 
 const router = express.Router();
 
@@ -35,7 +31,5 @@ router.get("/employee/:employeeId/attendance", authMiddleware, getEmployeeAttend
 router.get("/getTodayAttendance", authMiddleware, getTodayAttendance);
 
 /* ================= LEAVE ================= */
-router.get("/leaves", authMiddleware, getMyLeaves);
-router.post("/leave/apply", authMiddleware, applyLeave);
 
 export default router;

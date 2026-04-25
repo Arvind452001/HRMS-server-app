@@ -1,42 +1,99 @@
 import Leave from "../../models/Leave.js";
-/**
- * GET /admin/Leaves/pending
- */
-export const getPendingLeaves = async (req, res) => {
+
+// ================= GET ALL LEAVES =================
+export const getAllLeaves = async (req, res) => {
   try {
-    const Leaves = await Leave.find({ status: "pending" }).populate("employee");
-    res.status(200).json({ success: true, data: Leaves });
+    const leaves = await Leave.find()
+      .populate("employeeId", "name email")
+      .populate("approvedBy", "name")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: leaves });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
-/**
- * PATCH /admin/Leaves/:id/status
- */
-export const updateLeaveStatus = async (req, res) => {
+// ================= FILTER LEAVES =================
+export const filterLeaves = async (req, res) => {
   try {
-    const { LeaveId } = req.params;
-    const { status } = req.body;
+    const { status } = req.query;
 
-    const Leave = await Leave.findByIdAndUpdate(
-      LeaveId,
-      { status },
-      { new: true },
-    );
+    const query = {};
 
-    if (!Leave) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Leave not found" });
+    if (status) {
+      query.status = status.toUpperCase(); // normalize
     }
 
-    res.status(200).json({
+    const leaves = await Leave.find(query)
+      .populate("employeeId", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: leaves });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ================= UPDATE LEAVE STATUS =================
+export const updateLeaveStatus = async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    const approverId = req.user.id;
+
+    if (!["APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const leave = await Leave.findById(leaveId);
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: "Leave not found",
+      });
+    }
+
+    if (leave.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "Already processed",
+      });
+    }
+
+    leave.status = status;
+    leave.approvedBy = approverId;
+    leave.approvedAt = new Date();
+
+    if (status === "REJECTED") {
+      leave.rejectionReason = rejectionReason || "";
+    }
+
+    await leave.save();
+
+    res.json({
       success: true,
-      message: `Leave ${status}`,
-      data: Leave,
+      message: `Leave ${status.toLowerCase()}`,
+      data: leave,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

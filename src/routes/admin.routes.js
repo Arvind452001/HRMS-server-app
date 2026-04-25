@@ -18,7 +18,8 @@ import {
   updateEmployeeByAdmin,
 } from "../controllers/adminControllers/adminEmployee.controller.js";
 import {
-  getPendingLeaves,
+  filterLeaves,
+  getAllLeaves,
   updateLeaveStatus,
 } from "../controllers/adminControllers/leave.admin.controller.js";
 import { getAdminDashboardCharts } from "../controllers/adminControllers/dashboard.admin.controller.js";
@@ -101,28 +102,36 @@ router.get(
   getAttendanceStats,
 );
 
-/* =================  get Pending Leaves  ================= */
-router.get(
-  "/leaves/pending", //done
-  authMiddleware,
-  isHrOrAdmin,
-  getPendingLeaves,
-);
-
-/* =================  get Pending Leaves  ================= */
-router.patch(
-  "/leaves/:leaveId/status", //done
-  authMiddleware,
-  isHrOrAdmin,
-  updateLeaveStatus,
-);
-
 /* =================  get AdmiDashboard Charts ================= */
 router.get(
   "/adminDashboardCharts", //done
   authMiddleware,
   isHrOrAdmin,
   getAdminDashboardCharts,
+);
+
+
+/* =================  get Pending Leaves  ================= */
+router.get(
+  "/leaves/pending", //done
+  authMiddleware,
+  isHrOrAdmin,
+  filterLeaves,
+);
+
+/* =================  get Pending Leaves  ================= */
+router.get(
+  "/leaves/pending", //done
+  authMiddleware,
+  isHrOrAdmin,
+  getAllLeaves,
+);
+/* =================  get Pending Leaves  ================= */
+router.patch(
+  "/leaves/:leaveId/status", //done
+  authMiddleware,
+  isHrOrAdmin,
+  updateLeaveStatus,
 );
 
 export default router;

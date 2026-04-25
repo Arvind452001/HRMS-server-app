@@ -1,72 +1,113 @@
 import Leave from "../../models/Leave.js";
-/**
- * POST /employee/leave/apply
- */
-export const applyLeave = async (req, res) => {
+
+// ================= CREATE LEAVE =================
+export const createLeave = async (req, res) => {
   try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+    const {
+      leaveType,
+      leaveMode,
+      reason,
+      emergencyContact,
+      dates,
+    } = req.body;
 
-    const { dates, leaveType, reason } = req.body;
+    const employeeId = req.user.id;
 
-    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+    if (
+      !leaveType ||
+      !leaveMode ||
+      !reason ||
+      !emergencyContact ||
+      !dates ||
+      dates.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Please select at least one leave date",
+        message: "All fields are required",
       });
     }
 
-    // 🔥 OVERLAP CHECK
-    const existingLeave = await Leave.findOne({
-      employee: req.user.id,
-      status: { $in: ["pending", "approved"] },
-      dates: { $in: dates }, // 👈 date overlap check
+    // ✅ Safe UTC conversion
+    const formattedDates = dates.map((d) => {
+      const cleanDate = d.includes("T") ? d.split("T")[0] : d;
+      const [year, month, day] = cleanDate.split("-").map(Number);
+
+      return new Date(Date.UTC(year, month - 1, day));
     });
 
-    if (existingLeave) {
-      return res.status(409).json({
-        success: false,
-        message: "Leave already applied for one or more selected dates",
-      });
-    }
-
-    // ✅ CREATE LEAVE
     const leave = await Leave.create({
-      employee: req.user.id,
-      dates,
+      employeeId,
       leaveType,
+      leaveMode,
       reason,
+      emergencyContact,
+      dates: formattedDates,
     });
 
     res.status(201).json({
       success: true,
-      message: "Leave applied successfully",
+      message: "Leave request submitted",
       data: leave,
     });
   } catch (error) {
-    console.error("APPLY LEAVE ERROR 👉", error);
+    console.error(error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Server error",
     });
   }
 };
 
-
-
-
-/**
- * GET /employee/leaves
- */
+// ================= GET MY LEAVES =================
 export const getMyLeaves = async (req, res) => {
   try {
-    const leaves = await Leave.find({ employee: req.user.id }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: leaves });
+    const leaves = await Leave.find({
+      employeeId: req.user.id,
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, data: leaves });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ================= CANCEL LEAVE =================
+export const cancelLeave = async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+
+    const leave = await Leave.findById(leaveId);
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: "Leave not found",
+      });
+    }
+
+    if (leave.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending leave can be cancelled",
+      });
+    }
+
+    leave.status = "CANCELLED";
+    await leave.save();
+
+    res.json({
+      success: true,
+      message: "Leave cancelled successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
