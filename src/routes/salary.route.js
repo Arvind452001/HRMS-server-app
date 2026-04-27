@@ -1,13 +1,18 @@
 import express from "express";
-import { createSalary, deleteSalary, getAllSalary, getSalaryById, updateSalary } from "../controllers/salaryController/salary.controller.js";
+import { createSalary, deleteSalary, getAllSalary, getMySalary, getSalaryById, updateSalary } from "../controllers/salaryController/salary.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { isHrOrAdmin } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-router.post("/add-Salary", authMiddleware,createSalary);
-router.get("/getAllSalary",authMiddleware, getAllSalary);
-router.get("/getSalaryById/:id",authMiddleware, getSalaryById);
-router.patch("/updateSalary/:id",authMiddleware, updateSalary);
-router.delete("/deleteSalary/:id",authMiddleware, deleteSalary);
+//==================Employee SALARY ==================//
+router.post("/add-Salary",  createSalary);
+router.get("/getAllSalary",authMiddleware, isHrOrAdmin, getAllSalary);
+router.get("/getSalaryById/:id",authMiddleware, isHrOrAdmin, getSalaryById);
+router.patch("/updateSalary/:id",authMiddleware, isHrOrAdmin, updateSalary);
+router.delete("/deleteSalary/:id",authMiddleware, isHrOrAdmin, deleteSalary);
+
+//==================Employee SALARY ==================//
+router.get("/getMySalary",authMiddleware, getMySalary);
 
 export default router;

@@ -1,3 +1,6 @@
+
+
+
 export const isHrOrAdmin = (req, res, next) => {
   const allowedRoles = ["hr", "admin"];
 

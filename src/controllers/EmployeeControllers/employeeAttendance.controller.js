@@ -6,14 +6,9 @@ import mongoose from "mongoose";
 export const checkIn = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const { checkInTime } = req.body; // 🔥 frontend se UTC
-  if (!checkInTime) {
-      return res.status(400).json({
-        message: "checkInTime is required",
-      });
-    }
 
-    const checkIn = new Date(checkInTime); // ✅ UTC
+    // ✅ server time
+    const checkIn = new Date();
 
     // ✅ normalize date (UTC day)
     const date = new Date(Date.UTC(
@@ -27,12 +22,14 @@ export const checkIn = async (req, res) => {
       date,
     });
 
+    // ❌ already checked-in
     if (attendance?.checkIn) {
       return res.status(400).json({
         message: "Already checked in today",
       });
     }
 
+    // ✅ create if not exists
     if (!attendance) {
       attendance = new Attendance({
         employee: employeeId,
@@ -40,6 +37,7 @@ export const checkIn = async (req, res) => {
       });
     }
 
+    // ✅ set check-in
     attendance.checkIn = checkIn;
     attendance.status = "present";
     attendance.source = "web";
@@ -53,29 +51,24 @@ export const checkIn = async (req, res) => {
     });
 
   } catch (error) {
-  console.error("CHECK-IN ERROR 👉", error);
+    console.error("CHECK-IN ERROR 👉", error);
 
-  res.status(500).json({
-    message: "Check-in failed",
-    error: error.message, // 🔥 add this
-  });
-}
+    res.status(500).json({
+      message: "Check-in failed",
+      error: error.message,
+    });
+  }
 };
 
 /* ================= CHECK-OUT ================= */
 export const checkOut = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const { checkOutTime } = req.body;
 
-    if (!checkOutTime) {
-      return res.status(400).json({
-        message: "checkOutTime is required",
-      });
-    }
+    // ✅ server time (IST / system time)
+    const checkOut = new Date();
 
-    const checkOut = new Date(checkOutTime); // ✅ UTC
-
+    // ✅ normalize date (midnight UTC)
     const date = new Date(Date.UTC(
       checkOut.getUTCFullYear(),
       checkOut.getUTCMonth(),
@@ -99,6 +92,7 @@ export const checkOut = async (req, res) => {
       });
     }
 
+    // ✅ set checkout time
     attendance.checkOut = checkOut;
 
     // ✅ calculate hours
