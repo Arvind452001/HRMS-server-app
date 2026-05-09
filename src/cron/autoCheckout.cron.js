@@ -5,6 +5,3 @@ cron.schedule("30 23 * * *", async () => {
   await autoCheckoutToday();
   console.log("✅ Auto checkout done");
 });
-
-
-
