@@ -1,6 +1,7 @@
 import Interview from "../../models/interview.model.js";
 import Visitor from "../../models/Visitor.js";
 import Employee from "../../models/employee.model.js";
+import OldEmployee from './../../models/oldEmployee.model.js';
 
 /* ================= ROUND ORDER ================= */
 const roundOrder = ["HR", "Technical", "Machine Coding", "Director", "Salary Discussion","Document Verification","Joining Form",];
@@ -71,7 +72,7 @@ export const scheduleInterview = async (req, res) => {
     }
 
     /* ================= INTERVIEWER CHECK ================= */
-    const interviewer = await Employee.findById(interviewerId);
+    const interviewer = await OldEmployee.findById(interviewerId);
     if (!interviewer) {
       return res.status(404).json({
         message: "Invalid interviewer",
@@ -124,6 +125,7 @@ export const scheduleInterview = async (req, res) => {
   roundType,
   interviewer: interviewerId,
   scheduledDate,
+  interviewTime
 });
     // const interview = await Interview.create({
     //   candidate: candidateId,

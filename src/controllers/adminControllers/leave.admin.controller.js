@@ -89,7 +89,7 @@ export const updateLeaveStatus = async (req, res) => {
       message: `Leave ${status.toLowerCase()}`,
       data: leave,
     });
-  } catch (error) {
+  }catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
