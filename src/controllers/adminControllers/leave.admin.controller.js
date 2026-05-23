@@ -1,19 +1,36 @@
 import Leave from "../../models/Leave.js";
 
 // ================= GET ALL LEAVES =================
+
 export const getAllLeaves = async (req, res) => {
   try {
     const leaves = await Leave.find()
-      .populate("employeeId", "name email")
-      .populate("approvedBy", "name")
+      .populate({
+        path: "employeeId",
+        select: {
+          personal: {
+            fullName: 1,
+          },
+        },
+      })
+      .populate({
+        path: "approvedBy",
+        select: {
+          personal: 1,
+        },
+      })
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: leaves });
+    res.status(200).json({
+      success: true,
+      data: leaves,
+    });
   } catch (error) {
-    console.error(error);
+    console.log(error);
+
     res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Server Error",
     });
   }
 };

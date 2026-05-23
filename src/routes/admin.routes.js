@@ -112,12 +112,12 @@ router.get(
 
 
 /* =================  get Pending Leaves  ================= */
-router.get(
-  "/leaves/pending", //done
-  authMiddleware,
-  isHrOrAdmin,
-  filterLeaves,
-);
+// router.get(
+//   "/leaves/pending", //done
+//   authMiddleware,
+//   isHrOrAdmin,
+//   filterLeaves,
+// );
 
 /* =================  get Pending Leaves  ================= */
 router.get(
