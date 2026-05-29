@@ -33,13 +33,29 @@ export const scheduleInterview = async (req, res) => {
     }
 
     /* ================= COMBINE DATE + TIME ================= */
-    const scheduledDate = new Date(`${interviewDate}T${interviewTime}:00`);
+  const [year, month, day] = interviewDate
+  .split("-")
+  .map(Number);
 
-    if (isNaN(scheduledDate.getTime())) {
-      return res.status(400).json({
-        message: "Invalid date or time format",
-      });
-    }
+const [hours, minutes] = interviewTime
+  .split(":")
+  .map(Number);
+
+/*
+User selects IST
+Convert IST -> UTC before saving
+IST = UTC + 5:30
+*/
+const scheduledDate = new Date(
+  Date.UTC(
+    year,
+    month - 1,
+    day,
+    hours - 5,
+    minutes - 30,
+    0
+  )
+);
 
     /* ================= PAST DATE CHECK ================= */
     if (scheduledDate < new Date()) {
