@@ -34,7 +34,7 @@ export const createJob = async (req, res) => {
       visibility,
       status,
     } = req.body;
-
+let currentUser_id = req.user.id.toString();
     const job = new Job({
       title,
       department,
@@ -59,7 +59,7 @@ export const createJob = async (req, res) => {
       applicationDeadline,
       visibility,
       status,
-      postedBy: "6996c0e721fa7e89b010638c",
+      postedBy: currentUser_id,
       // postedBy: req.user._id, // from auth middleware
     });
 
@@ -101,7 +101,8 @@ export const updateJob = async (req, res) => {
         message: "Job not found",
       });
     }
-
+console.log("Job Posted By:", job.postedBy.toString());
+console.log("Current User ID:", req.user.id.toString());
     // Ownership check
     if (job.postedBy.toString() !== req.user.id.toString()) {
       return res.status(403).json({

@@ -47,7 +47,7 @@ const jobSchema = new mongoose.Schema(
 
     workplaceType: {
       type: String,
-      enum: ["On-site", "Remote", "Hybrid"],
+      enum: ["On-Site", "Remote", "Hybrid"],
       required: true,
       index: true,
     },
@@ -179,7 +179,7 @@ const jobSchema = new mongoose.Schema(
 
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
+      ref: "OldEmployee",
       required: true,
     },
 
@@ -205,7 +205,7 @@ jobSchema.pre("save", function (next) {
       strict: true,
     });
   }
-  next();
+  // next();
 });
 
 const Job = mongoose.model("Job", jobSchema);

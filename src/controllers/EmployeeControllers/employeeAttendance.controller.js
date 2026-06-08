@@ -310,3 +310,84 @@ export const getTodayAttendance = async (req, res) => {
     res.status(500).json({ message: "Error fetching attendance" });
   }
 };
+
+
+export const getMonthlyAttendanceSummary = async (req, res) => {
+  try {
+    const { employeeId, month, year } = req.query;
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+
+    const attendance = await Attendance.find({
+      employee: employeeId,
+      date: {
+        $gte: startDate,
+        $lt: endDate,
+      },
+    });
+
+    const totalDays = new Date(year, month, 0).getDate();
+
+    let present = 0;
+    let absent = 0;
+    let leave = 0;
+    let halfDay = 0;
+    let totalWorkingHours = 0;
+
+  
+attendance.forEach((record) => {
+  if (record.status === "present") present++;
+  if (record.status === "absent") absent++;
+  if (record.status === "leave") leave++;
+  if (record.status === "half-day") halfDay++;
+
+  totalWorkingHours += Number(record.totalHours || 0);
+});
+
+const hours = Math.floor(totalWorkingHours);
+const minutes = Math.round((totalWorkingHours - hours) * 60);
+
+const formattedWorkingTime = `${hours}:${minutes}h`;
+
+    // Saturday/Sunday weekoffs
+    let weekOffs = 2;
+
+    for (let day = 1; day <= totalDays; day++) {
+      const date = new Date(year, month - 1, day);
+
+      if (date.getDay() === 0) {
+        weekOffs++;
+      }
+    }
+
+    const workingDays = totalDays - weekOffs;
+
+    const attendancePercentage =
+      workingDays > 0
+        ? Number(((present / workingDays) * 100).toFixed(2))
+        : 0;
+
+   return res.json({
+  month,
+  year,
+  totalDays,
+  workingDays,
+  weekOffs,
+  present,
+  absent,
+  leave,
+  halfDay,
+
+  totalWorkingHours: Number(totalWorkingHours.toFixed(2)),
+  formattedWorkingTime,
+
+  attendancePercentage,
+});
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch attendance summary",
+    });
+  }
+};

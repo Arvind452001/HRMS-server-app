@@ -70,7 +70,7 @@ export const login = async (req, res) => {
 export const getMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log("GET PROFILE USER ID 👉", userId);
+    // console.log("GET PROFILE USER ID 👉", userId);
     const employee = await OldEmployee.findById(userId).select(
       "-account.loginPassword ",
     );

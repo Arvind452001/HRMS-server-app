@@ -5,9 +5,9 @@ import {
   checkOut,
   getEmployeeAttendance,
   getEmployeesWithTodayAttendance,
+  getMonthlyAttendanceSummary,
   getMyAttendance,
   getTodayAttendance,
- 
 } from "./../controllers/EmployeeControllers/employeeAttendance.controller.js";
 import {
   getMyProfile,
@@ -29,6 +29,11 @@ router.get("/attendance/my", authMiddleware, getMyAttendance);
 router.get("/getEmployeesAttendance", authMiddleware, getEmployeesWithTodayAttendance);
 router.get("/employee/:employeeId/attendance", authMiddleware, getEmployeeAttendance);
 router.get("/getTodayAttendance", authMiddleware, getTodayAttendance);
+router.get(
+  "/attendance/summary",
+  authMiddleware,
+  getMonthlyAttendanceSummary
+);
 
 /* ================= LEAVE ================= */
 
