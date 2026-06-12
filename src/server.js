@@ -17,6 +17,7 @@ import interviewRoutes from "./routes/interview.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import oldEmployeeRoutes from "./routes/oldEmployee.Routes.js";
 import salaryRoutes from "./routes/salary.route.js";
+import salaryStructureRoutes from "./routes/SalaryStructure.routes.js";
 import leave from "./routes/leave.route.js";
 import supportRoutes from "./routes/support.routes.js";
 
@@ -48,6 +49,7 @@ app.use("/api/interview", interviewRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/oldEmployees", oldEmployeeRoutes);
 app.use("/api/salary", salaryRoutes);
+app.use("/api/salary/structures", salaryStructureRoutes);
 app.use("/api/leave", leave);
 app.use("/api/support", supportRoutes);
 
