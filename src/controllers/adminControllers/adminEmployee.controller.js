@@ -1,4 +1,5 @@
 import Employee from "../../models/employee.model.js";
+import { createAuditLog } from "../../services/audit.service.js";
 
 // GET /admin/Employees
 export const getAllEmployees = async (req, res) => {
@@ -92,6 +93,15 @@ export const updateEmployeeByAdmin = async (req, res) => {
       });
     }
 
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE",
+      module: "EMPLOYEE",
+      recordId: employee._id,
+      newData: updateData,
+      req,
+    });
+
     res.status(200).json({
       success: true,
       message: "Employee updated successfully",
@@ -119,6 +129,15 @@ export const toggleEmployeeActiveStatus = async (req, res) => {
 
     employee.isActive = !employee.isActive;
     await employee.save();
+
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE",
+      module: "EMPLOYEE",
+      recordId: employee._id,
+      newData: { isActive: employee.isActive },
+      req,
+    });
 
     res.status(200).json({
       success: true,

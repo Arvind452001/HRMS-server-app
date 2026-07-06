@@ -2,6 +2,7 @@
 ////////------------------get Pending Employees--------------------//////////
 
 import Employee from "../../models/employee.model.js";
+import { createAuditLog } from "../../services/audit.service.js";
 
 
 export const getPendingEmployees = async (req, res) => {
@@ -77,6 +78,17 @@ export const updateEmployeeStatus = async (req, res) => {
     }
 
     await employee.save();
+
+    // ========= Audit log ================= //
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE",
+      module: "EMPLOYEE",
+      recordId: employee._id,
+      oldData: { status: "pending", isActive: false },
+      newData: { status: employee.status, isActive: employee.isActive },
+      req,
+    });
 
     res.json({
       message: `Employee ${status} successfully`,

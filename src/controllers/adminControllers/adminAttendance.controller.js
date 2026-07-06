@@ -9,8 +9,10 @@ export const getAttendanceByDate = async (req, res) => {
       return res.status(400).json({ message: "Date is required" });
     }
 
-    const selectedDate = new Date(date);
-    selectedDate.setHours(0, 0, 0, 0);
+    // Parse date as UTC midnight (matching stored Attendance records)
+    const cleanDate = date.includes("T") ? date.split("T")[0] : date;
+    const [yearVal, monthVal, dayVal] = cleanDate.split("-").map(Number);
+    const selectedDate = new Date(Date.UTC(yearVal, monthVal - 1, dayVal));
 
     const attendanceList = await Attendance.find({
       date: selectedDate,
@@ -53,8 +55,9 @@ export const getMonthlyAttendanceSummary = async (req, res) => {
   try {
     const { month, year } = req.query;
 console.log("req.query",req.query)
-    const start = new Date(year, month - 1, 1);
-    const end = new Date(year, month, 0);
+    // Normalize monthly search bounds to UTC midnight
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
     const attendance = await Attendance.find({
       date: { $gte: start, $lte: end },

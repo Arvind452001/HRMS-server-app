@@ -4,7 +4,7 @@ const leaveSchema = new mongoose.Schema(
   {
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "OldEmployee",
+      ref: "Employee",
       required: true,
     },
 
@@ -38,13 +38,13 @@ const leaveSchema = new mongoose.Schema(
     // 🔥 NEW FIELDS
     status: {
       type: String,
-      enum: ["PENDING", "APPROVED", "REJECTED"],
+      enum: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"],
       default: "PENDING",
     },
 
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "OldEmployee", // manager/admin
+      ref: "Employee", // manager/admin
       default: null,
     },
 
@@ -59,5 +59,8 @@ const leaveSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Optimize query performance for employee history and status filters
+leaveSchema.index({ employeeId: 1, status: 1 });
 
 export default mongoose.model("Leave", leaveSchema);

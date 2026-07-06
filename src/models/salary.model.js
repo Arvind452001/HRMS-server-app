@@ -19,7 +19,7 @@ const salarySchema = new mongoose.Schema(
       required: true,
     },
 
-    // ✅ month/year (important)
+    // Payroll Period
     month: {
       type: Number,
       required: true,
@@ -32,89 +32,116 @@ const salarySchema = new mongoose.Schema(
       required: true,
     },
 
-    // 💰 Earnings
-    basic: { type: Number, default: 0 },
-    hra: { type: Number, default: 0 },
-    da: { type: Number, default: 0 },
-    specialAllowance: { type: Number, default: 0 },
-    bonus: { type: Number, default: 0 },
+    // Attendance (future use)
+    workingDays: {
+      type: Number,
+      default: 0,
+    },
 
-    // ➖ Deductions
-    pf: { type: Number, default: 0 },
-    esi: { type: Number, default: 0 },
-    tax: { type: Number, default: 0 },
-    otherDeduction: { type: Number, default: 0 },
+    paidDays: {
+      type: Number,
+      default: 0,
+    },
 
-    // 📊 Calculated
-    gross: { type: Number, default: 0 },
-    net: { type: Number, default: 0 },
+    leaveWithoutPay: {
+      type: Number,
+      default: 0,
+    },
+
+    // Earnings
+    basic: {
+      type: Number,
+      default: 0,
+    },
+
+    hra: {
+      type: Number,
+      default: 0,
+    },
+
+    conveyanceAllowance: {
+      type: Number,
+      default: 0,
+    },
+
+    medicalAllowance: {
+      type: Number,
+      default: 0,
+    },
+
+    specialAllowance: {
+      type: Number,
+      default: 0,
+    },
+
+    bonus: {
+      type: Number,
+      default: 0,
+    },
+
+    grossSalary: {
+      type: Number,
+      default: 0,
+    },
+
+    // Deductions
+    pf: {
+      type: Number,
+      default: 0,
+    },
+
+    esi: {
+      type: Number,
+      default: 0,
+    },
+
+    professionalTax: {
+      type: Number,
+      default: 0,
+    },
+
+    leaveDeduction: {
+      type: Number,
+      default: 0,
+    },
+
+    otherDeduction: {
+      type: Number,
+      default: 0,
+    },
+
+    totalDeduction: {
+      type: Number,
+      default: 0,
+    },
+
+    // Final Salary
+    netSalary: {
+      type: Number,
+      default: 0,
+    },
+
+    status: {
+      type: String,
+      enum: ["draft", "generated", "paid"],
+      default: "generated",
+    },
+
+    paidDate: {
+      type: Date,
+    },
+
+    remarks: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  },
 );
 
-
-// 🔥 Prevent duplicate salary for same employee/month/year
-salarySchema.index(
-  { employee: 1, month: 1, year: 1 },
-  { unique: true }
-);
-
-
-// 🔥 Salary calculation helper
-const calculateSalary = (data) => {
-  const earnings =
-    (data.basic || 0) +
-    (data.hra || 0) +
-    (data.da || 0) +
-    (data.specialAllowance || 0) +
-    (data.bonus || 0);
-
-  const deductions =
-    (data.pf || 0) +
-    (data.esi || 0) +
-    (data.tax || 0) +
-    (data.otherDeduction || 0);
-
-  return {
-    gross: earnings,
-    net: earnings - deductions,
-  };
-};
-
-
-// ✅ BEFORE SAVE
-salarySchema.pre("save", function (next) {
-  const { gross, net } = calculateSalary(this);
-
-  this.gross = gross;
-  this.net = net;
-
-  // next();
-});
-
-
-// ✅ BEFORE UPDATE (IMPORTANT FIX)
-salarySchema.pre("findOneAndUpdate", async function () {
-  const update = this.getUpdate();
-
-  // old doc fetch
-  const doc = await this.model.findOne(this.getQuery());
-
-  if (!doc) return;
-
-  const merged = {
-    ...doc.toObject(),
-    ...update,
-  };
-
-  const { gross, net } = calculateSalary(merged);
-
-  this.setUpdate({
-    ...update,
-    gross,
-    net,
-  });
-});
-
+// One salary per employee per month
+salarySchema.index({ employee: 1, month: 1, year: 1 }, { unique: true });
 
 export default mongoose.model("Salary", salarySchema);

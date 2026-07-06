@@ -308,4 +308,3 @@ export const getJobBySlug = async (req, res) => {
   }
 };
 
-

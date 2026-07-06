@@ -1,4 +1,5 @@
 import Employee from "../../models/employee.model.js";
+import { createAuditLog } from "../../services/audit.service.js";
 
 /* ================= REGISTER EMPLOYEE ================= */
 
@@ -17,7 +18,7 @@ export const registerEmployee = async (req, res) => {
       emergencyNo,
     } = req.body;
 
-    console.log("Register Body:", req.body);
+    console.log("Register Body: [redacted for security]");
 
     /* ================= Validation ================= */
     if (!name || !email || !password) {
@@ -106,6 +107,17 @@ export const updateMyProfile = async (req, res) => {
     updateData,
     { new: true }
   ).select("-password");
+
+  if (employee) {
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE",
+      module: "EMPLOYEE",
+      recordId: employee._id,
+      newData: updateData,
+      req,
+    });
+  }
 
   res.json({
     message: "Profile updated successfully",

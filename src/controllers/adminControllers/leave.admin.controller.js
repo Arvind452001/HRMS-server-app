@@ -1,4 +1,6 @@
 import Leave from "../../models/Leave.js";
+import { createAuditLog } from "../../services/audit.service.js";
+
 
 // ================= GET ALL LEAVES =================
 
@@ -100,6 +102,16 @@ export const updateLeaveStatus = async (req, res) => {
     }
 
     await leave.save();
+
+    // ========= Audit log ================= //
+    await createAuditLog({
+      user: req.user,
+      action: "UPDATE",
+      module: "LEAVE",
+      recordId: leave._id,
+      newData: { status: leave.status, approvedBy: leave.approvedBy, rejectionReason: leave.rejectionReason },
+      req,
+    });
 
     res.json({
       success: true,

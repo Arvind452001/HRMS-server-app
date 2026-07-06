@@ -88,7 +88,7 @@ const scheduledDate = new Date(
     }
 
     /* ================= INTERVIEWER CHECK ================= */
-    const interviewer = await OldEmployee.findById(interviewerId);
+    const interviewer = await Employee.findById(interviewerId) || await OldEmployee.findById(interviewerId);
     if (!interviewer) {
       return res.status(404).json({
         message: "Invalid interviewer",

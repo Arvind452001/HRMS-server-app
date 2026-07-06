@@ -4,7 +4,7 @@ const payrollSchema = new mongoose.Schema(
   {
     employee: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "OldEmployee",
+      ref: "Employee",
       required: [true, "Employee is required"],
       index: true,
     },
@@ -22,86 +22,113 @@ const payrollSchema = new mongoose.Schema(
     },
 
     // Attendance Snapshot
-    workingDays: {
+    totalWorkingDays: {
       type: Number,
+      required: true,
       default: 0,
     },
 
     presentDays: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    paidLeaves: {
+    absentDays: {
       type: Number,
-      default: 0,
-    },
-
-    unpaidLeaves: {
-      type: Number,
+      required: true,
       default: 0,
     },
 
     halfDays: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    // Salary Snapshot
-    basic: {
+    paidLeaves: {
       type: Number,
       required: true,
+      default: 0,
+    },
+
+    unpaidLeaves: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    payableDays: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    // Salary Structure Snapshot
+    basicSalary: {
+      type: Number,
+      required: true,
+      default: 0,
     },
 
     hra: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    da: {
+    allowances: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    specialAllowance: {
-      type: Number,
-      default: 0,
-    },
-
-    // Monthly Additions
     bonus: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    overtimeAmount: {
+    // Deductions Snapshot & Calculations
+    absentDeduction: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    // Deductions
+    halfDayDeduction: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    unpaidLeaveDeduction: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
     pf: {
       type: Number,
+      required: true,
       default: 0,
     },
 
     esi: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    tax: {
+    professionalTax: {
       type: Number,
+      required: true,
       default: 0,
     },
 
-    otherDeduction: {
+    otherDeductions: {
       type: Number,
-      default: 0,
-    },
-
-    leaveDeduction: {
-      type: Number,
+      required: true,
       default: 0,
     },
 
@@ -109,31 +136,43 @@ const payrollSchema = new mongoose.Schema(
     grossSalary: {
       type: Number,
       required: true,
+      default: 0,
     },
 
-    totalDeduction: {
+    perDaySalary: {
       type: Number,
       required: true,
+      default: 0,
+    },
+
+    totalDeductions: {
+      type: Number,
+      required: true,
+      default: 0,
     },
 
     netSalary: {
       type: Number,
       required: true,
+      default: 0,
     },
 
     status: {
       type: String,
       enum: ["generated", "paid", "cancelled"],
       default: "generated",
+      index: true,
     },
 
     paidAt: {
       type: Date,
+      default: null,
     },
 
     remarks: {
       type: String,
       trim: true,
+      default: null,
     },
   },
   {
@@ -141,7 +180,7 @@ const payrollSchema = new mongoose.Schema(
   }
 );
 
-// Prevent duplicate payroll generation
+// Prevent duplicate payroll generation for the same employee, month, and year
 payrollSchema.index(
   {
     employee: 1,
@@ -153,6 +192,6 @@ payrollSchema.index(
   }
 );
 
-const Payroll = mongoose.model("Payroll", payrollSchema);
+const Payroll = mongoose.models.Payroll || mongoose.model("Payroll", payrollSchema);
 
 export default Payroll;

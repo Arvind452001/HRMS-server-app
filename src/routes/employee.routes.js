@@ -4,6 +4,7 @@ import {
   checkIn,
   checkOut,
   getEmployeeAttendance,
+  getEmployeesAttendanceByDate,
   getEmployeesWithTodayAttendance,
   getMonthlyAttendanceSummary,
   getMyAttendance,
@@ -28,6 +29,7 @@ router.post("/check-out", authMiddleware, checkOut);
 router.get("/attendance/my", authMiddleware, getMyAttendance);
 router.get("/getEmployeesAttendance", authMiddleware, getEmployeesWithTodayAttendance);
 router.get("/employee/:employeeId/attendance", authMiddleware, getEmployeeAttendance);
+router.get("/todayAllAttendance", authMiddleware, getEmployeesAttendanceByDate);
 router.get("/getTodayAttendance", authMiddleware, getTodayAttendance);
 router.get(
   "/attendance/summary",

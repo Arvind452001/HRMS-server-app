@@ -10,8 +10,17 @@ const salaryStructureSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Earnings
-    basic: {
+    effectiveFrom: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+
+    // ==========================
+    // Earnings (Fixed Components)
+    // ==========================
+
+    basicSalary: {
       type: Number,
       required: true,
       min: 0,
@@ -24,7 +33,13 @@ const salaryStructureSchema = new mongoose.Schema(
       default: 0,
     },
 
-    da: {
+    conveyanceAllowance: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    medicalAllowance: {
       type: Number,
       min: 0,
       default: 0,
@@ -42,73 +57,44 @@ const salaryStructureSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Deductions
-    pf: {
+    // Optional fixed deduction
+    professionalTax: {
       type: Number,
       min: 0,
       default: 0,
     },
 
-    esi: {
-      type: Number,
-      min: 0,
-      default: 0,
-    },
-
-    tax: {
-      type: Number,
-      min: 0,
-      default: 0,
-    },
-
-    otherDeduction: {
-      type: Number,
-      min: 0,
-      default: 0,
-    },
-
-    effectiveFrom: {
-      type: Date,
-      required: true,
-      default: Date.now,
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
   }
 );
 
-// Virtual Gross Salary
-salaryStructureSchema.virtual("grossSalary").get(function () {
+// ==========================
+// Virtual - Gross Package
+// ==========================
+
+salaryStructureSchema.virtual("grossPackage").get(function () {
   return (
-    this.basic +
-    this.hra +
-    this.da +
-    this.specialAllowance +
-    this.bonus
+    (this.basicSalary || 0) +
+    (this.hra || 0) +
+    (this.conveyanceAllowance || 0) +
+    (this.medicalAllowance || 0) +
+    (this.specialAllowance || 0) +
+    (this.bonus || 0)
   );
 });
 
-// Virtual Total Deduction
-salaryStructureSchema.virtual("totalDeduction").get(function () {
-  return (
-    this.pf +
-    this.esi +
-    this.tax +
-    this.otherDeduction
-  );
+salaryStructureSchema.set("toJSON", {
+  virtuals: true,
 });
 
-// Virtual Net Salary
-salaryStructureSchema.virtual("netSalary").get(function () {
-  return this.grossSalary - this.totalDeduction;
+salaryStructureSchema.set("toObject", {
+  virtuals: true,
 });
 
-const SalaryStructure = mongoose.model(
-  "SalaryStructure",
-  salaryStructureSchema
-);
-
-export default SalaryStructure;
+export default mongoose.model("SalaryStructure", salaryStructureSchema);

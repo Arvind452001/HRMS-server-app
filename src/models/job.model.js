@@ -198,14 +198,13 @@ const jobSchema = new mongoose.Schema(
 );
 
 // 🔥 Auto Slug Generator
-jobSchema.pre("save", function (next) {
+jobSchema.pre("save", function () {
   if (!this.slug) {
     this.slug = slugify(this.title + "-" + Date.now(), {
       lower: true,
       strict: true,
     });
   }
-  // next();
 });
 
 const Job = mongoose.model("Job", jobSchema);

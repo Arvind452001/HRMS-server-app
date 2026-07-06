@@ -47,6 +47,12 @@ const employeeSchema = new mongoose.Schema(
 
     approvedAt: { type: Date, default: null },
 
+    salaryStructureId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SalaryStructure",
+      default: null,
+    },
+
     /* ================= EMPLOYEE DATA ================= */
 
     name: { type: String, required: true, trim: true },
@@ -79,8 +85,22 @@ const employeeSchema = new mongoose.Schema(
     forgotPasswordToken: { type: String, default: null },
     forgotPasswordExpiry: { type: Date, default: null },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// Virtual properties for requirements compatibility
+employeeSchema.virtual("employeeId").get(function () {
+  return this.employeeCode;
+});
+
+employeeSchema.virtual("joiningDate").get(function () {
+  return this.dateOfJoining;
+});
+
 
 /* ================= PASSWORD HASHING ================= */
 

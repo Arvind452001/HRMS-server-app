@@ -1,5 +1,6 @@
 import Attendance from "../../models/Attendance.js";
-import Employee from "../../models/employee.model.js";
+import OldEmployee from "../../models/oldEmployee.model.js";
+// import Employee from "../../models/employee.model.js";
 import { isOfficeIP } from "../../utils/ip.utils.js";
 import mongoose from "mongoose";
 /* ================= CHECK-IN ================= */
@@ -68,19 +69,15 @@ export const checkOut = async (req, res) => {
     // ✅ server time (IST / system time)
     const checkOut = new Date();
 
-    // ✅ normalize date (midnight UTC)
-    const date = new Date(Date.UTC(
-      checkOut.getUTCFullYear(),
-      checkOut.getUTCMonth(),
-      checkOut.getUTCDate()
-    ));
-
+    // Find an active check-in record for this employee within the last 18 hours (prevents UTC day rollover bugs)
+    const threshold = new Date(Date.now() - 18 * 60 * 60 * 1000);
     const attendance = await Attendance.findOne({
       employee: employeeId,
-      date,
+      checkIn: { $gte: threshold },
+      checkOut: null,
     });
 
-    if (!attendance || !attendance.checkIn) {
+    if (!attendance) {
       return res.status(400).json({
         message: "You have not checked in today",
       });
@@ -195,7 +192,7 @@ export const getEmployeesAttendanceByDate = async (req, res) => {
 
     // ✅ fetch data
     const [employees, attendance] = await Promise.all([
-      Employee.find(),
+      OldEmployee.find(),
       Attendance.find({
         date: {
           $gte: targetDate,
@@ -216,8 +213,8 @@ export const getEmployeesAttendanceByDate = async (req, res) => {
 
       return {
         _id: emp._id,
-        name: emp.personal?.fullName,
-        employeeId: emp.professional?.employeeId,
+        name: emp.personal?.fullName || emp.name || "",
+        employeeId: emp.professional?.employeeId || emp.employeeCode || emp.employeeId || "",
 
         status: att ? att.status : "absent",
         checkIn: att?.checkIn || null,
@@ -316,8 +313,9 @@ export const getMonthlyAttendanceSummary = async (req, res) => {
   try {
     const { employeeId, month, year } = req.query;
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 1);
+    // Normalize search bounds to UTC midnight to match DB storage timezone
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 1));
 
     const attendance = await Attendance.find({
       employee: employeeId,

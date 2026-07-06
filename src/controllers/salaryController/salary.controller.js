@@ -1,10 +1,11 @@
 import { ACTIONS, MODULES } from "../../constants/audit.js";
+import OldEmployee from "../../models/oldEmployee.model.js";
 import Salary from "../../models/salary.model.js";
+import SalaryStructure from "../../models/salaryStructureSchema.js";
 import { createAuditLog } from "../../services/audit.service.js";
 
 /* ================= CREATE (OR UPDATE SAME MONTH) ================= */
 export const createSalary = async (req, res) => {
-  console.log("CREATE/UPDATE SALARY 👉", req.body);
   try {
     const { employee, month, year } = req.body;
 
@@ -15,35 +16,137 @@ export const createSalary = async (req, res) => {
       });
     }
 
-    // 🔥 check existing salary
-    let existing = await Salary.findOne({ employee, month, year });
+    // Employee Check
+    const employeeExists = await OldEmployee.findById(employee);
 
-    if (existing) {
-      // 👉 update instead of duplicate create
-      const oldData = existing.toObject();
+    if (!employeeExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
 
-      Object.assign(existing, req.body);
-      await existing.save();
+    // Salary Structure Check
+    const structure = await SalaryStructure.findOne({ employee });
+
+    if (!structure) {
+      return res.status(404).json({
+        success: false,
+        message: "Salary structure not found",
+      });
+    }
+
+    // ==========================
+    // Earnings
+    // ==========================
+
+    const basic = structure.basicSalary || 0;
+    const hra = structure.hra || 0;
+    const specialAllowance = structure.allowances || 0;
+    const bonus = structure.bonus || 0;
+
+    const grossSalary =
+      basic +
+      hra +
+      specialAllowance +
+      bonus;console.log("GROSS:", grossSalary);
+    // ==========================
+    // Deductions
+    // ==========================
+
+    // PF = 12% of Basic
+    const pf = Math.round((basic * 12) / 100);
+
+    // ESI = 0.75% of Gross (only if gross <= 21000)
+    const esi =
+      grossSalary <= 21000
+        ? Number(((grossSalary * 0.75) / 100).toFixed(2))
+        : 0;
+
+    const professionalTax = structure.professionalTax || 0;
+
+    const otherDeduction =
+      structure.otherDeductions || 0;
+
+    const totalDeduction =
+      pf +
+      esi +
+      professionalTax +
+      otherDeduction;
+
+    const netSalary =
+      grossSalary - totalDeduction;
+
+    // ==========================
+    // Salary Payload
+    // ==========================
+
+    const salaryPayload = {
+      employee,
+      month,
+      year,
+
+      salaryType: "monthly",
+      effectiveFrom: structure.effectiveFrom,
+
+      // Earnings
+      basic,
+      hra,
+      specialAllowance,
+      bonus,
+
+      // Deductions
+      pf,
+      esi,
+      professionalTax,
+      otherDeduction,
+
+      // Calculated
+      grossSalary,
+      netSalary,
+    };
+
+    // ==========================
+    // Existing Salary Check
+    // ==========================
+
+    let existingSalary = await Salary.findOne({
+      employee,
+      month,
+      year,
+    });
+
+    if (existingSalary) {
+      const oldData = existingSalary.toObject();
+
+      Object.assign(existingSalary, salaryPayload);
+
+      await existingSalary.save();
 
       await createAuditLog({
         user: req.user,
         action: ACTIONS.UPDATE,
         module: MODULES.SALARY,
-        recordId: existing._id,
+        recordId: existingSalary._id,
         oldData,
-        newData: existing,
+        newData: existingSalary,
         req,
       });
 
       return res.status(200).json({
         success: true,
-        message: "Salary updated (already existed for this month)",
-        data: existing,
+        message: "Salary regenerated successfully",
+        data: existingSalary,
       });
     }
 
-    // 👉 create new
-    const salary = await Salary.create(req.body);
+    // ==========================
+    // Create Salary
+    // ==========================
+
+    const salary = await Salary.create(
+      salaryPayload
+    );
 
     await createAuditLog({
       user: req.user,
@@ -56,60 +159,100 @@ export const createSalary = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Salary created successfully",
+      message: "Salary generated successfully",
       data: salary,
     });
-
   } catch (error) {
-    // 🔥 duplicate safety
+    console.error(
+      "Salary Generation Error:",
+      error
+    );
+
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: "Salary already exists for this employee in this month",
+        message:
+          "Salary already exists for this employee for this month",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to create salary",
+      message:
+        error.message ||
+        "Failed to generate salary",
     });
   }
 };
 
 
 /* ================= GET ALL (FILTER SUPPORT) ================= */
-export const getAllSalary = async (req, res) => {
+export const getAllSalaryByEmployeeId = async (req, res) => {
   try {
-    const { month, year, employee } = req.query;
+    const { employeeId, month, year } = req.query;
 
     const filter = {};
 
-    if (month) filter.month = Number(month);
-    if (year) filter.year = Number(year);
-    if (employee) filter.employee = employee;
+    if (employeeId) {
+      filter.employee = employeeId;
+    }
 
-    const data = await Salary.find(filter)
+    if (month) {
+      filter.month = Number(month);
+    }
+
+    if (year) {
+      filter.year = Number(year);
+    }
+
+    const salaries = await Salary.find(filter)
       .populate({
         path: "employee",
         select: "personal.fullName professional.employeeId",
       })
       .sort({ year: -1, month: -1 });
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "Salary list fetched successfully",
-      count: data.length,
-      data,
+      count: salaries.length,
+      data: salaries,
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to fetch salary",
+      message: error.message,
     });
   }
 };
 
+export const getAllEmployeeSalaryByMonthAndYear = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    const filter = {};
+
+    if (month) filter.month = Number(month);
+    if (year) filter.year = Number(year);
+
+    const salaries = await Salary.find(filter)
+      .populate({
+        path: "employee",
+        select: "personal.fullName professional.employeeId",
+      })
+      .sort({ year: -1, month: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: salaries.length,
+      data: salaries,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 /* ================= GET BY ID ================= */
 export const getSalaryById = async (req, res) => {

@@ -18,7 +18,7 @@ export const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
     req.user = decoded; // { id, role }
-// console.log("decoded",decoded)
+    // console.log("decoded", decoded);
     next();
   } catch (error) {
     console.error("AUTH ERROR 👉", error.message);
