@@ -43,12 +43,7 @@ console.log("instance",express())
 // app.use(limiter);
 
 /* CORS */
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  })
-);
+app.use(cors());
 
 /* Health Check */
 app.get("/health", (req, res) => {
